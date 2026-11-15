@@ -148,6 +148,11 @@ public final class AdvancedFontScreen extends Screen {
 		return widget;
 	}
 
+	/** The settings screen's draft, which this screen edits; read by the game tests. */
+	public FontSettings draft() {
+		return settings.draft();
+	}
+
 	/** The widgets that have a tooltip; read by the game tests. */
 	public List<AbstractWidget> tooltipWidgets() {
 		return List.copyOf(tooltipped);

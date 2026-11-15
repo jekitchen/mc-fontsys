@@ -7,6 +7,7 @@ All notable changes to Fontsys. Versions follow [semantic versioning](https://se
 ### Added
 
 - **Quick toggle key.** Switch between your font and Minecraft's own with one key press, for example to compare them or to read something in the original font. Bind **Toggle Fontsys font** under Options → Controls → Key Binds → Fontsys; it has no key by default, so it can't clash with other mods. Press it again to switch back. Your font and its settings are kept, the choice is remembered after a restart, and a message above the hotbar says which font is now in use.
+- **Classic shadow.** A new checkbox on the Advanced screen brings back Minecraft's own drop shadow, a full step down and to the right, for players who prefer it to Fontsys's thinner shadow. It's off by default, so nothing changes unless you turn it on. Glowing sign text gets the matching thicker outline. Like the other settings, each font remembers it, the preview shows it before you apply it, and "Keep this font?" lists it. Crisp edges always uses the classic shadow, so the checkbox is grayed out while it's on.
 
 ## [1.2.0] - 2026-11-14
 

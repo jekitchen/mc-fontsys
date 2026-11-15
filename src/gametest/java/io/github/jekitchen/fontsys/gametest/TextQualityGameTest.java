@@ -91,8 +91,11 @@ public class TextQualityGameTest implements FabricClientGameTest {
 		Fontsys.LOGGER.info("[gametest] Linear coverage: {} edge pixels, worst error {}.", edges, worst);
 	}
 
-	/** How far the shadow reaches past the text, in screen pixels, measured to the right and down. */
-	private static int shadowPixels(ClientGameTestContext context, String name) {
+	/**
+	 * How far the shadow reaches past the text, in screen pixels, measured to the right and down;
+	 * also used by {@link ClassicShadowGameTest} (D60).
+	 */
+	static int shadowPixels(ClientGameTestContext context, String name) {
 		int[] plain = bounds(shoot(context, name + "-off", 0xFF000000, 0xFFFFFFFF, false));
 		int[] shadowed = bounds(shoot(context, name, 0xFF000000, 0xFFFFFFFF, true));
 		int right = shadowed[0] - plain[0];

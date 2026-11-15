@@ -126,7 +126,7 @@ public class HintingGameTest implements FabricClientGameTest {
 		ScreenRectangle button = context.computeOnClient(mc -> hintingButton(mc).getRectangle());
 		click(context, button.left() + button.width() / 2, button.top() + button.height() / 2);
 		require(hintingLabel(context).equals(label(Hinting.LIGHT)), "one click cycles to Light: " + hintingLabel(context));
-		require(context.computeOnClient(mc -> ((AdvancedFontScreen) mc.gui.screen()).tooltipWidgets().size()) == 5,
+		require(context.computeOnClient(mc -> ((AdvancedFontScreen) mc.gui.screen()).tooltipWidgets().size()) == 6,
 			"Hinting has a tooltip like the other Advanced controls");
 		settle(context);
 		int[][] advancedLight = shoot(context, "d53-advanced-light");

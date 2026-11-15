@@ -118,11 +118,6 @@ public record FontSettings(
 		return !crispEdges;
 	}
 
-	/** Whether smooth glyphs draw with the thinner shadow (D37): unless crisp, or Classic shadow is on (D60). */
-	public boolean thinShadow() {
-		return !crispEdges && !classicShadow;
-	}
-
 	/**
 	 * Whether the oversample follows the GUI scale: when set to automatic, and always in crisp
 	 * mode (D34), where one glyph pixel must be exactly one screen pixel.

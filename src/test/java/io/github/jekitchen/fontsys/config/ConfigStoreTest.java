@@ -112,10 +112,8 @@ class ConfigStoreTest {
 		// The shadow is chosen when glyphs load, so it reloads the font and asks "Keep this font?" (D60).
 		assertFalse(a.sameRendering(a.withClassicShadow(true)));
 		assertFalse(FontSettings.DEFAULTS.classicShadow(), "off by default: the thinner shadow (D37)");
-		assertTrue(a.thinShadow());
-		assertFalse(a.withClassicShadow(true).thinShadow());
-		assertFalse(a.withCrispEdges(true).thinShadow(), "crisp glyphs always have the classic shadow");
-		assertFalse(a.withCrispEdges(true).classicShadowApplies());
+		assertTrue(a.classicShadowApplies());
+		assertFalse(a.withCrispEdges(true).classicShadowApplies(), "crisp glyphs always have the classic shadow");
 	}
 
 	/** Files from before Classic shadow load with it off, so nobody's shadow changes (D60). */
