@@ -48,6 +48,8 @@ jobs:
     runs-on: ubuntu-24.04
     # A client that can't open its window waits forever; fail fast instead of after 6 hours.
     timeout-minutes: 30
+    # production-jar-vulkan is allowed to fail until it has passed reliably (PRD D62); the others block.
+    continue-on-error: ${{ matrix.allow-failure == true }}
     strategy:
       fail-fast: false
       matrix:
@@ -61,6 +63,11 @@ jobs:
           - mods: production-jar
             task: runProductionClientGameTest
             run-dir: productionClientGameTest
+          # The built jar on Minecraft's Vulkan backend, on Mesa's software Vulkan (lavapipe), PRD D62.
+          - mods: production-jar-vulkan
+            task: runProductionClientGameTest -PgraphicsBackend=vulkan
+            run-dir: productionClientGameTest
+            allow-failure: true
     steps:
       - name: Checkout
         uses: actions/checkout@v6
