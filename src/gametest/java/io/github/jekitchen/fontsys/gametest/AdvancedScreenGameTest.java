@@ -68,7 +68,7 @@ public class AdvancedScreenGameTest implements FabricClientGameTest {
 		int[][] cases = {{640, 480, 2}, {854, 480, 1}, {1920, 1080, 4}};
 		try {
 			for (int[] c : cases) {
-				context.getInput().resizeWindow(c[0], c[1]);
+				GameTestWindow.resize(context, c[0], c[1]);
 				guiScale(context, c[2]);
 				String name = "ui19-layout-" + c[0] + "x" + c[1] + "-scale" + c[2];
 				context.setScreen(() -> new FontConfigScreen(new TitleScreen()));
@@ -83,7 +83,7 @@ public class AdvancedScreenGameTest implements FabricClientGameTest {
 				context.setScreen(TitleScreen::new);
 			}
 		} finally {
-			context.getInput().resizeWindow(854, 480);
+			GameTestWindow.reset(context);
 			guiScale(context, 0);
 		}
 	}

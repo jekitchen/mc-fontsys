@@ -44,7 +44,7 @@ public class StoreScreenshotsGameTest implements FabricClientGameTest {
 			Fontsys.LOGGER.warn("[gametest] Store screenshots need installed fonts; skipped.");
 			return;
 		}
-		context.getInput().resizeWindow(WIDTH, HEIGHT);
+		GameTestWindow.resize(context, WIDTH, HEIGHT);
 		context.waitTicks(20);
 
 		// Title screen: vanilla, then the system font.
@@ -129,6 +129,9 @@ public class StoreScreenshotsGameTest implements FabricClientGameTest {
 		}
 		context.waitForScreen(TitleScreen.class);
 		GameTestFonts.apply(context, FontSettings.DEFAULTS);
+		// Fabric's own reset after the test doesn't set the window surface up again (D62).
+		GameTestWindow.reset(context);
+		context.waitTicks(5);
 	}
 
 	/** 0 is Auto. */
