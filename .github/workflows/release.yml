@@ -46,7 +46,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          jar="build/libs/fontsys-${VERSION}+$(sed -n 's/^minecraft_version=//p' gradle.properties).jar"
+          jar="build/libs/fontsys-${VERSION}+$(sed -n 's/^minecraft_label=//p' gradle.properties | tr -d '\r').jar"
           test -f "$jar"
           gh release create "$GITHUB_REF_NAME" "$jar" --draft --verify-tag \
             --title "Fontsys $VERSION" --notes-file release-notes.md
