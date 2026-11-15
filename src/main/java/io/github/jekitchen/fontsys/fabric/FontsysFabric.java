@@ -22,8 +22,9 @@ public final class FontsysFabric implements ClientModInitializer {
 
 		KeyMapping.Category category = KeyMapping.Category.register(ClientHooks.KEY_CATEGORY);
 		KeyMapping openKey = KeyMappingHelper.registerKeyMapping(ClientHooks.createOpenKey(category));
+		KeyMapping toggleKey = KeyMappingHelper.registerKeyMapping(ClientHooks.createToggleKey(category));
 
-		ClientTickEvents.END_CLIENT_TICK.register(mc -> ClientHooks.endClientTick(mc, openKey));
+		ClientTickEvents.END_CLIENT_TICK.register(mc -> ClientHooks.endClientTick(mc, openKey, toggleKey));
 		// Fabric fires these each time a screen is shown, also when the player returns to it.
 		// Labels laid out in the old font are refit when the player returns to a screen (UI-18).
 		ScreenEvents.BEFORE_INIT.register((mc, screen, width, height) -> FontChangeRefresh.beforeInit(screen));

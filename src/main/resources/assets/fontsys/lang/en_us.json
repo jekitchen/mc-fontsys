@@ -7,6 +7,14 @@
 
 	"key.category.fontsys.main": "Fontsys",
 	"key.fontsys.open": "Open font settings",
+	"key.fontsys.toggle": "Toggle Fontsys font",
+
+	"fontsys.toggle.on": "Now using %s",
+	"fontsys.toggle.off": "Now using Minecraft's font",
+	"fontsys.toggle.failed": "%s couldn't be loaded; using Minecraft's font. See the game log.",
+	"fontsys.toggle.no_font": "No font picked yet. Press %s to choose one.",
+	"fontsys.toggle.no_font.unbound": "No font picked yet. Choose one in Options > Language > Font Settings > Fontsys Settings.",
+	"fontsys.toggle.conflict": "Fontsys is turned off because %s also changes the game font.",
 
 	"fontsys.screen.title": "%s%s",
 	"fontsys.screen.title.font": "Font",

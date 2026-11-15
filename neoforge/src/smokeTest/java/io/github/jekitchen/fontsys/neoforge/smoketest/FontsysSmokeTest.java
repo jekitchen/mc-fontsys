@@ -85,12 +85,15 @@ public final class FontsysSmokeTest {
 	/** A client that never reaches the title screen must not hang CI. */
 	private static final long TIMEOUT_MINUTES = 10;
 
+	/** Free in vanilla 26.3, and not used by Sodium or Iris. */
+	private static final InputConstants.Key TOGGLE_TEST_KEY = InputConstants.Type.KEYBOARD.getOrCreate(InputConstants.KEY_F8);
+
 	/** Chunks that never report rendered (another renderer, a slow CI machine) must not hang the test. */
 	private static final int CHUNK_TIMEOUT_TICKS = 20 * 60;
 
 	private enum Step {
 		TITLE, F7_OPENED, FONT_OPTIONS, SCAN, APPLYING, RETURNED, RESETTING,
-		WORLD_LOADING, WORLD_VANILLA, WORLD_APPLYING, WORLD_RESETTING, WORLD_LEAVING, DONE
+		WORLD_LOADING, WORLD_VANILLA, WORLD_APPLYING, WORLD_TOGGLING, WORLD_RESETTING, WORLD_LEAVING, DONE
 	}
 
 	private final List<String> lines = new ArrayList<>();
@@ -101,6 +104,8 @@ public final class FontsysSmokeTest {
 	private CompletableFuture<Void> pending;
 	private FontOptionsScreen fontOptions;
 	private FaceInfo face;
+	private KeyMapping toggleKey;
+	private int generationBefore;
 	private volatile boolean finished;
 
 	public FontsysSmokeTest() {
@@ -275,6 +280,25 @@ public final class FontsysSmokeTest {
 				check(!pending.isCompletedExceptionally() && PackContents.loaded().active(), "a font applies in a world", "reload failed or pack inactive");
 				check(!widths(mc).equals(vanillaWidths), "text in a world is measured in the new font", "widths " + widths(mc) + " equal vanilla's");
 				screenshot(mc, "neoforge-world-system-font.png");
+				// The toggle key (D59), bound for the test as a player would bind it, and clicked as a
+				// press would click it: the NeoForge tick hands it to the shared code.
+				toggleKey.setKey(TOGGLE_TEST_KEY);
+				KeyMapping.resetMapping();
+				generationBefore = Fontsys.controller().fontGeneration();
+				KeyMapping.click(TOGGLE_TEST_KEY);
+				next(Step.WORLD_TOGGLING);
+			}
+			case WORLD_TOGGLING -> {
+				if (Fontsys.controller().fontGeneration() == generationBefore || mc.gui.overlay() != null || ticksInStep < 40) {
+					within(20 * 60, "the toggle key switches the font", "no reload after the press");
+					return;
+				}
+				toggleKey.setKey(InputConstants.UNKNOWN);
+				KeyMapping.resetMapping();
+				FontSettings toggled = Fontsys.controller().appliedSettings();
+				check(!PackContents.loaded().active() && widths(mc).equals(vanillaWidths), "the toggle key switches to Minecraft's font", "widths " + widths(mc));
+				check(!toggled.enabled() && face.path().equals(toggled.fontPath()) && Fontsys.controller().pendingSettings() == null,
+					"the toggle keeps the font choice and asks nothing", "settings " + toggled);
 				pending = Fontsys.controller().apply(FontSettings.DEFAULTS);
 				next(Step.WORLD_RESETTING);
 			}
@@ -377,6 +401,14 @@ public final class FontsysSmokeTest {
 		check(key != null, "the Fontsys key mapping is registered", "not in Options > Controls");
 		check(key.getDefaultKey().getValue() == InputConstants.KEY_F7, "the key defaults to F7", "default is " + key.getDefaultKey());
 		check(key.getCategory().id().equals(ClientHooks.KEY_CATEGORY), "the key is in the Fontsys category", "category " + key.getCategory().id());
+		for (KeyMapping mapping : mc.options.keyMappings) {
+			if (mapping.getName().equals("key.fontsys.toggle")) {
+				toggleKey = mapping;
+			}
+		}
+		check(toggleKey != null, "the toggle key mapping is registered (D59)", "not in Options > Controls");
+		check(toggleKey.getDefaultKey().equals(InputConstants.UNKNOWN) && toggleKey.isUnbound(), "the toggle key is unbound by default", "default is " + toggleKey.getDefaultKey());
+		check(toggleKey.getCategory().id().equals(ClientHooks.KEY_CATEGORY), "the toggle key is in the Fontsys category", "category " + toggleKey.getCategory().id());
 
 		Optional<IConfigScreenFactory> factory = ModList.get().getModContainerById(Fontsys.MOD_ID).flatMap(c -> c.getCustomExtension(IConfigScreenFactory.class));
 		check(factory.isPresent(), "the mods list has a Config button for Fontsys", "no IConfigScreenFactory");

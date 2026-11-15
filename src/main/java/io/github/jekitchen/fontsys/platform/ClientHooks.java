@@ -2,6 +2,7 @@ package io.github.jekitchen.fontsys.platform;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import io.github.jekitchen.fontsys.Fontsys;
+import io.github.jekitchen.fontsys.apply.QuickToggle;
 import io.github.jekitchen.fontsys.ui.FontConfigScreen;
 import java.util.Collections;
 import java.util.Set;
@@ -31,6 +32,8 @@ public final class ClientHooks {
 	/** Option lists that already have the Fontsys button. Weak: lists go when their screen does. */
 	private static final Set<OptionsList> WITH_BUTTON = Collections.newSetFromMap(new WeakHashMap<>());
 
+	private static final QuickToggle QUICK_TOGGLE = new QuickToggle();
+
 	private static boolean conflictToastShown;
 
 	private ClientHooks() {
@@ -41,14 +44,28 @@ public final class ClientHooks {
 		return new KeyMapping("key.fontsys.open", InputConstants.KEY_F7, category);
 	}
 
+	/**
+	 * Switches between the player's font and Minecraft's (D59). Unbound by default, so it can't
+	 * clash with another mod's key; the player binds it under Controls.
+	 */
+	public static KeyMapping createToggleKey(KeyMapping.Category category) {
+		return new KeyMapping("key.fontsys.toggle", InputConstants.UNKNOWN.getValue(), category);
+	}
+
+	/** The toggle key's state and last message; for the game tests. */
+	public static QuickToggle quickToggle() {
+		return QUICK_TOGGLE;
+	}
+
 	/** At the end of every client tick. */
-	public static void endClientTick(Minecraft mc, KeyMapping openKey) {
+	public static void endClientTick(Minecraft mc, KeyMapping openKey, KeyMapping toggleKey) {
 		Fontsys.controller().tick(mc);
 		while (openKey.consumeClick()) {
 			if (!(mc.gui.screen() instanceof FontConfigScreen)) {
 				mc.gui.setScreen(new FontConfigScreen(mc.gui.screen()));
 			}
 		}
+		QUICK_TOGGLE.tick(mc, toggleKey, openKey);
 		// One notice per session when another font mod is loaded (AP-12).
 		if (!conflictToastShown && mc.gui.screen() instanceof TitleScreen) {
 			conflictToastShown = true;
