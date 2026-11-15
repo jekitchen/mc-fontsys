@@ -45,10 +45,18 @@ public final class PrivateUseFilteringProvider implements GlyphProvider {
 	 * the hinting the face is measured and rendered with (D53).
 	 */
 	public PrivateUseFilteringProvider(GlyphProvider delegate, FT_Face face, FaceSpec spec, boolean crisp, Hinting hinting) {
+		this(delegate, face, spec, crisp, hinting, false);
+	}
+
+	/**
+	 * As above, also choosing the shadow: the thinner one for smooth glyphs (D37), or vanilla's
+	 * full unit with {@code classicShadow} (D60).
+	 */
+	public PrivateUseFilteringProvider(GlyphProvider delegate, FT_Face face, FaceSpec spec, boolean crisp, Hinting hinting, boolean classicShadow) {
 		this.delegate = delegate;
 		this.face = face;
 		this.spec = spec;
-		SystemFaces.add(face, spec.syntheticBold(), crisp, hinting);
+		SystemFaces.add(face, spec.syntheticBold(), crisp, hinting, classicShadow);
 	}
 
 	/** U+E000–U+F8FF, plus the supplementary private-use planes 15 and 16. */

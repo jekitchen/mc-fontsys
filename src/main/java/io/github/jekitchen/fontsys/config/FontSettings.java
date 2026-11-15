@@ -9,6 +9,8 @@ import java.util.Objects;
  * @param oversample rasterization oversampling; {@code 0} means automatic (the current GUI scale)
  * @param crispEdges hard-edged glyphs for pixel-style fonts (PRD AP-10, D34)
  * @param hinting how outlines are fitted to the pixel grid (D53); crisp mode uses its own
+ * @param classicShadow vanilla's full-unit drop shadow for smooth glyphs instead of the thinner
+ *     one (D37, D60); crisp glyphs always have it
  */
 public record FontSettings(
 	boolean enabled,
@@ -22,7 +24,8 @@ public record FontSettings(
 	float shiftY,
 	boolean applyToUniform,
 	boolean crispEdges,
-	Hinting hinting) {
+	Hinting hinting,
+	boolean classicShadow) {
 
 	public static final float DEFAULT_SIZE = 10.0F;
 	public static final float MIN_SIZE = 5.0F;
@@ -31,12 +34,18 @@ public record FontSettings(
 	public static final float MAX_OVERSAMPLE = 8.0F;
 	public static final float MAX_SHIFT = 4.0F;
 
-	public static final FontSettings DEFAULTS = new FontSettings(false, null, 0, null, null, DEFAULT_SIZE, AUTO_OVERSAMPLE, 0, 0, false, false, Hinting.DEFAULT);
+	public static final FontSettings DEFAULTS = new FontSettings(false, null, 0, null, null, DEFAULT_SIZE, AUTO_OVERSAMPLE, 0, 0, false, false, Hinting.DEFAULT, false);
 
-	/** Settings with the default hinting (Full), as before hinting was a setting. */
+	/** Settings with the default hinting (Full) and the thinner shadow, as before either was a setting. */
 	public FontSettings(boolean enabled, String fontPath, int faceIndex, String familyName, String styleName, float size,
 		float oversample, float shiftX, float shiftY, boolean applyToUniform, boolean crispEdges) {
 		this(enabled, fontPath, faceIndex, familyName, styleName, size, oversample, shiftX, shiftY, applyToUniform, crispEdges, Hinting.DEFAULT);
+	}
+
+	/** Settings with the thinner shadow (D37), as before Classic shadow was a setting. */
+	public FontSettings(boolean enabled, String fontPath, int faceIndex, String familyName, String styleName, float size,
+		float oversample, float shiftX, float shiftY, boolean applyToUniform, boolean crispEdges, Hinting hinting) {
+		this(enabled, fontPath, faceIndex, familyName, styleName, size, oversample, shiftX, shiftY, applyToUniform, crispEdges, hinting, false);
 	}
 
 	/** A font is selected and the master switch is on. */
@@ -61,41 +70,51 @@ public record FontSettings(
 			clamp(finiteOr(shiftY, 0), -MAX_SHIFT, MAX_SHIFT),
 			applyToUniform,
 			crispEdges,
-			Hinting.orDefault(hinting));
+			Hinting.orDefault(hinting),
+			classicShadow);
 	}
 
 	/** The same settings with the font file at another path (instance fonts, FD-14). */
 	public FontSettings withFontPath(String path) {
-		return new FontSettings(enabled, path, faceIndex, familyName, styleName, size, oversample, shiftX, shiftY, applyToUniform, crispEdges, hinting);
+		return new FontSettings(enabled, path, faceIndex, familyName, styleName, size, oversample, shiftX, shiftY, applyToUniform, crispEdges, hinting, classicShadow);
 	}
 
 	/** The same font choice, with a new on/off state. */
 	public FontSettings withEnabled(boolean value) {
-		return new FontSettings(value, fontPath, faceIndex, familyName, styleName, size, oversample, shiftX, shiftY, applyToUniform, crispEdges, hinting);
+		return new FontSettings(value, fontPath, faceIndex, familyName, styleName, size, oversample, shiftX, shiftY, applyToUniform, crispEdges, hinting, classicShadow);
 	}
 
 	public FontSettings withFont(String path, int index, String family, String style) {
-		return new FontSettings(enabled, path, index, family, style, size, oversample, shiftX, shiftY, applyToUniform, crispEdges, hinting);
+		return new FontSettings(enabled, path, index, family, style, size, oversample, shiftX, shiftY, applyToUniform, crispEdges, hinting, classicShadow);
 	}
 
 	public FontSettings withLayout(float newSize, float newOversample, float newShiftX, float newShiftY) {
-		return new FontSettings(enabled, fontPath, faceIndex, familyName, styleName, newSize, newOversample, newShiftX, newShiftY, applyToUniform, crispEdges, hinting);
+		return new FontSettings(enabled, fontPath, faceIndex, familyName, styleName, newSize, newOversample, newShiftX, newShiftY, applyToUniform, crispEdges, hinting, classicShadow);
 	}
 
 	public FontSettings withApplyToUniform(boolean value) {
-		return new FontSettings(enabled, fontPath, faceIndex, familyName, styleName, size, oversample, shiftX, shiftY, value, crispEdges, hinting);
+		return new FontSettings(enabled, fontPath, faceIndex, familyName, styleName, size, oversample, shiftX, shiftY, value, crispEdges, hinting, classicShadow);
 	}
 
 	public FontSettings withCrispEdges(boolean value) {
-		return new FontSettings(enabled, fontPath, faceIndex, familyName, styleName, size, oversample, shiftX, shiftY, applyToUniform, value, hinting);
+		return new FontSettings(enabled, fontPath, faceIndex, familyName, styleName, size, oversample, shiftX, shiftY, applyToUniform, value, hinting, classicShadow);
 	}
 
 	public FontSettings withHinting(Hinting value) {
-		return new FontSettings(enabled, fontPath, faceIndex, familyName, styleName, size, oversample, shiftX, shiftY, applyToUniform, crispEdges, value);
+		return new FontSettings(enabled, fontPath, faceIndex, familyName, styleName, size, oversample, shiftX, shiftY, applyToUniform, crispEdges, value, classicShadow);
+	}
+
+	public FontSettings withClassicShadow(boolean value) {
+		return new FontSettings(enabled, fontPath, faceIndex, familyName, styleName, size, oversample, shiftX, shiftY, applyToUniform, crispEdges, hinting, value);
 	}
 
 	/** Whether {@link #hinting} is used: crisp mode always hints for monochrome output instead (D34, D53). */
 	public boolean hintingApplies() {
+		return !crispEdges;
+	}
+
+	/** Whether {@link #classicShadow} is used: crisp glyphs always have the classic shadow (D37, D60). */
+	public boolean classicShadowApplies() {
 		return !crispEdges;
 	}
 
@@ -139,7 +158,8 @@ public record FontSettings(
 			&& shiftY == other.shiftY
 			&& applyToUniform == other.applyToUniform
 			&& crispEdges == other.crispEdges
-			&& hinting == other.hinting;
+			&& hinting == other.hinting
+			&& classicShadow == other.classicShadow;
 	}
 
 	private static float finiteOr(float value, float fallback) {

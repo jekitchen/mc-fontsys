@@ -10,13 +10,15 @@ import org.lwjgl.util.freetype.FT_Face;
  * FreeType faces opened for system fonts (applied or preview), so render-time fixes stay
  * scoped to ours, and the subset FreeType emboldens because the family has no heavier face
  * (PRD AP-8), and the subset rendered with hard edges in crisp mode (AP-10, D34), and each
- * face's hinting (D53). Preview faces carry the draft's settings, applied faces the applied ones.
+ * face's hinting (D53), and the smooth faces drawn with vanilla's full-unit shadow (D60).
+ * Preview faces carry the draft's settings, applied faces the applied ones.
  */
 public final class SystemFaces {
 	private static final Set<Long> FACES = ConcurrentHashMap.newKeySet();
 	private static final Set<Long> SYNTHETIC_BOLD = ConcurrentHashMap.newKeySet();
 	private static final Set<Long> CRISP = ConcurrentHashMap.newKeySet();
 	private static final Map<Long, Hinting> HINTING = new ConcurrentHashMap<>();
+	private static final Set<Long> CLASSIC_SHADOW = ConcurrentHashMap.newKeySet();
 
 	private SystemFaces() {
 	}
@@ -26,6 +28,11 @@ public final class SystemFaces {
 	}
 
 	public static void add(FT_Face face, boolean syntheticBold, boolean crisp, Hinting hinting) {
+		add(face, syntheticBold, crisp, hinting, false);
+	}
+
+	/** @param classicShadow draw smooth glyphs with vanilla's full-unit shadow (D60) */
+	public static void add(FT_Face face, boolean syntheticBold, boolean crisp, Hinting hinting, boolean classicShadow) {
 		if (face != null) {
 			FACES.add(face.address());
 			if (syntheticBold) {
@@ -37,6 +44,9 @@ public final class SystemFaces {
 			if (Hinting.orDefault(hinting) != Hinting.DEFAULT) {
 				HINTING.put(face.address(), hinting);
 			}
+			if (classicShadow) {
+				CLASSIC_SHADOW.add(face.address());
+			}
 		}
 	}
 
@@ -45,6 +55,7 @@ public final class SystemFaces {
 		SYNTHETIC_BOLD.remove(address);
 		CRISP.remove(address);
 		HINTING.remove(address);
+		CLASSIC_SHADOW.remove(address);
 	}
 
 	public static boolean contains(FT_Face face) {
@@ -57,6 +68,14 @@ public final class SystemFaces {
 
 	public static boolean isCrisp(FT_Face face) {
 		return face != null && CRISP.contains(face.address());
+	}
+
+	/**
+	 * Whether one of our faces draws with the thinner shadow ({@code TextShadow}, D37): when it is
+	 * smooth, unless Classic shadow is on (D60). Crisp glyphs keep vanilla's full unit.
+	 */
+	public static boolean thinShadow(FT_Face face) {
+		return !isCrisp(face) && !(face != null && CLASSIC_SHADOW.contains(face.address()));
 	}
 
 	/** The face's hinting; Full for faces that aren't ours, which vanilla loads unchanged. */

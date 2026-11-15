@@ -48,12 +48,13 @@ public final class PackContents {
 	 * @param autoOversample the oversample follows the GUI scale, so a GUI-scale change reloads the font
 	 * @param crisp    glyphs are rendered with hard edges (AP-10, D34)
 	 * @param hinting  how glyph outlines are hinted, unless crisp (D53)
+	 * @param classicShadow smooth glyphs keep vanilla's full-unit shadow (D60)
 	 */
 	public record Loaded(boolean active, int faceIndex, int guiScale, boolean autoOversample, boolean uniform, boolean crisp,
 		Map<Identifier, FaceSpec> files, Map<FontStyleSlot, StyledFaces.Variant> styles, Map<FontStyleSlot, FontStyleSlot> servedBy,
-		Hinting hinting) {
+		Hinting hinting, boolean classicShadow) {
 		static Loaded inactive(int guiScale) {
-			return new Loaded(false, 0, guiScale, false, false, false, Map.of(), Map.of(), Map.of(), Hinting.DEFAULT);
+			return new Loaded(false, 0, guiScale, false, false, false, Map.of(), Map.of(), Map.of(), Hinting.DEFAULT, false);
 		}
 	}
 
@@ -167,7 +168,7 @@ public final class PackContents {
 			servedBy.put(slot, slot);
 		}
 		loaded = new Loaded(true, font.faceIndex(), guiScale, auto, settings.applyToUniform(), settings.crispEdges(), Map.copyOf(files), Map.copyOf(styles), Map.copyOf(servedBy),
-			settings.hinting());
+			settings.hinting(), settings.classicShadow());
 	}
 
 	/**

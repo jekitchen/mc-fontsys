@@ -28,11 +28,15 @@ class AdvancedSettingsTest {
 		assertEquals(List.of("fontsys.confirm.change.hinting"), AdvancedSettings.changedLabelKeys(INTER.withHinting(Hinting.LIGHT)));
 		assertEquals(List.of("fontsys.confirm.change.shift_x", "fontsys.confirm.change.hinting"),
 			AdvancedSettings.changedLabelKeys(INTER.withLayout(12, 4, 1, 0).withHinting(Hinting.NONE)));
+		// Classic shadow (D60) sits between Hinting and Replace Unicode font.
+		assertEquals(List.of("fontsys.advanced.classic_shadow"), AdvancedSettings.changedLabelKeys(INTER.withClassicShadow(true)));
+		assertEquals(List.of("fontsys.confirm.change.hinting", "fontsys.advanced.classic_shadow", "fontsys.screen.apply_to_uniform"),
+			AdvancedSettings.changedLabelKeys(INTER.withApplyToUniform(true).withClassicShadow(true).withHinting(Hinting.LIGHT)));
 	}
 
 	@Test
 	void resetKeepsEverythingElse() {
-		FontSettings tuned = INTER.withLayout(12, 4, 0.5F, -1.5F).withApplyToUniform(true).withHinting(Hinting.NONE);
+		FontSettings tuned = INTER.withLayout(12, 4, 0.5F, -1.5F).withApplyToUniform(true).withHinting(Hinting.NONE).withClassicShadow(true);
 		assertEquals(INTER, AdvancedSettings.reset(tuned));
 		assertEquals(INTER, AdvancedSettings.reset(INTER));
 	}

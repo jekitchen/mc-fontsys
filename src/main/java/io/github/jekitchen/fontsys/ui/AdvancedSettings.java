@@ -25,9 +25,12 @@ public final class AdvancedSettings {
 		if (settings.shiftY() != defaults.shiftY()) {
 			keys.add("fontsys.confirm.change.shift_y");
 		}
-		// In the Advanced screen's order: hinting above Replace Unicode font.
+		// In the Advanced screen's order: hinting and Classic shadow above Replace Unicode font.
 		if (settings.hinting() != defaults.hinting()) {
 			keys.add("fontsys.confirm.change.hinting");
+		}
+		if (settings.classicShadow() != defaults.classicShadow()) {
+			keys.add("fontsys.advanced.classic_shadow");
 		}
 		if (settings.applyToUniform() != defaults.applyToUniform()) {
 			keys.add("fontsys.screen.apply_to_uniform");
@@ -41,6 +44,7 @@ public final class AdvancedSettings {
 		return settings
 			.withLayout(settings.size(), settings.oversample(), defaults.shiftX(), defaults.shiftY())
 			.withApplyToUniform(defaults.applyToUniform())
-			.withHinting(defaults.hinting());
+			.withHinting(defaults.hinting())
+			.withClassicShadow(defaults.classicShadow());
 	}
 }
