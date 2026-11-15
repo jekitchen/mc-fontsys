@@ -7,6 +7,11 @@
 #                                       them with gradle.properties. Exit 0 if they match, 3 if a
 #                                       newer build is out.
 #   scripts/next-minecraft.sh bump      The same, then write the newest versions into gradle.properties.
+#   scripts/next-minecraft.sh adopt     Build for the next version: copy next_* into minecraft_version,
+#                                       fabric_api_version and modmenu_version, and set the jar's
+#                                       ranges, label and store version to it. For the port branch
+#                                       (one jar per Minecraft version, PRD D61); never on main
+#                                       before release day.
 #   scripts/next-minecraft.sh compile   Compile the mod and its game tests against the next version
 #                                       (shows what a port must change; nothing is kept).
 #   scripts/next-minecraft.sh test      Boot the built jar on the next version and run the full
@@ -129,6 +134,25 @@ case "${1:-}" in
 		[ -n "$mm" ] && set_prop next_modmenu_version "$mm"
 		echo "Updated gradle.properties; record the versions and the date in PRD D61."
 		;;
+	adopt)
+		mc=$(prop next_minecraft_version)
+		set_prop minecraft_version "$mc"
+		set_prop fabric_api_version "$(prop next_fabric_api_version)"
+		set_prop modmenu_version "$(prop next_modmenu_version)"
+		set_prop minecraft_label "$line"
+		set_prop publish_game_versions "$line"
+		minor=${line#*.}
+		set_prop neoforge_minecraft_range "[${line},${line%%.*}.$((minor + 1)))"
+		# A snapshot or pre-release is a pre-release of $line to Fabric Loader (26.4-alpha.8), which
+		# ~$line doesn't match; ~$line- does. On release day this becomes plain ~$line.
+		if [[ "$mc" =~ ^[0-9]+\.[0-9]+(\.[0-9]+)?$ ]]; then
+			set_prop fabric_minecraft_range "~${line}"
+		else
+			set_prop fabric_minecraft_range "~${line}-"
+		fi
+		grep -E '^(minecraft_version|fabric_api_version|modmenu_version|minecraft_label|publish_game_versions|fabric_minecraft_range|neoforge_minecraft_range)=' "$PROPS"
+		echo "Now set neoforge_version (or neoforge_enabled=false), Sodium and Iris by hand; see docs/release-26.4.md."
+		;;
 	compile)
 		gradle_next compileJava compileGametestJava
 		;;
@@ -136,7 +160,7 @@ case "${1:-}" in
 		./gradlew runNextClientGameTest
 		;;
 	*)
-		sed -n '2,17p' "$0"
+		sed -n '2,22p' "$0"
 		exit 2
 		;;
 esac
