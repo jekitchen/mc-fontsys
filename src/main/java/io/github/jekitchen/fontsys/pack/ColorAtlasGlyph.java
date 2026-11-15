@@ -30,7 +30,9 @@ import org.lwjgl.util.freetype.FT_Face;
  * {@code (c, c, c, c)} ({@code core/text.fsh}, {@code IS_GRAYSCALE}), which applies coverage
  * twice: light text on a dark background lost most of its edge pixels and looked thin.
  *
- * <p>Smooth glyphs also get a thinner drop shadow ({@link TextShadow}, D37).
+ * <p>Smooth glyphs also get a thinner drop shadow ({@link TextShadow}, D37), unless the player
+ * chose Classic shadow (D60). The choice is read from the face when the glyph is loaded, so
+ * changing it reloads the font, as every other setting does.
  */
 final class ColorAtlasGlyph implements UnbakedGlyph {
 	private final UnbakedGlyph delegate;
@@ -47,7 +49,7 @@ final class ColorAtlasGlyph implements UnbakedGlyph {
 		this.delegate = delegate;
 		this.face = face;
 		this.glyphIndex = glyphIndex;
-		this.thinShadow = !SystemFaces.isCrisp(face);
+		this.thinShadow = SystemFaces.thinShadow(face);
 		this.info = drawn(delegate.info());
 	}
 

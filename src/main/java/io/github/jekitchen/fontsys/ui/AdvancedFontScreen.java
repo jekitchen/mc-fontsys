@@ -35,6 +35,8 @@ public final class AdvancedFontScreen extends Screen {
 	private static final int MARGIN = 8;
 	private static final int TOP = 22;
 	private static final int ROW = 24;
+	/** The label color of an inactive vanilla button ({@code AbstractWidget.WithInactiveMessage}). */
+	private static final int INACTIVE_TEXT = 0xA0A0A0;
 
 	private final FontConfigScreen settings;
 	/** Widgets given a tooltip in {@link #init()}; read by the game tests. */
@@ -71,6 +73,7 @@ public final class AdvancedFontScreen extends Screen {
 			v -> Component.translatable("fontsys.screen.shift_y", format(v)),
 			v -> setShift(settings.draft().shiftX(), (float) v)), "fontsys.screen.shift_y.tooltip"));
 		row(hintingButton(draft));
+		row(classicShadowBox(draft));
 		row(tip(Checkbox.builder(Component.translatable("fontsys.screen.apply_to_uniform"), font)
 			.maxWidth(column)
 			.selected(draft.applyToUniform())
@@ -110,6 +113,25 @@ public final class AdvancedFontScreen extends Screen {
 				(b, value) -> change(settings.draft().withHinting(value)));
 		button.active = applies;
 		return tip(button, tooltip);
+	}
+
+	/**
+	 * Classic shadow (D60): vanilla's full-unit drop shadow for smooth glyphs instead of the
+	 * thinner one (D37). Crisp glyphs always have it, so while Crisp edges is on the box is
+	 * grayed out, shows the shadow crisp text gets (checked) and says why, as Hinting does.
+	 * Vanilla's {@code Checkbox} draws its label the same whether active or not, so the label
+	 * gets the gray vanilla gives inactive buttons ({@code AbstractWidget.WithInactiveMessage}).
+	 */
+	private Checkbox classicShadowBox(FontSettings draft) {
+		boolean applies = draft.classicShadowApplies();
+		Component label = Component.translatable("fontsys.advanced.classic_shadow");
+		Checkbox box = Checkbox.builder(applies ? label : label.copy().withColor(INACTIVE_TEXT), font)
+			.maxWidth(column)
+			.selected(applies ? draft.classicShadow() : true)
+			.onValueChange((b, value) -> change(settings.draft().withClassicShadow(value)))
+			.build();
+		box.active = applies;
+		return tip(box, applies ? "fontsys.advanced.classic_shadow.tooltip" : "fontsys.advanced.classic_shadow.tooltip.crisp");
 	}
 
 	/** Puts a control on the next row of the left column; a taller one (a wrapped checkbox label) gets more room. */

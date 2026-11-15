@@ -106,6 +106,49 @@ class ConfigStoreTest {
 		assertFalse(a.sameRendering(a.withHinting(Hinting.LIGHT)));
 	}
 
+	@Test
+	void classicShadowChangesRendering() {
+		FontSettings a = FontSettings.DEFAULTS.withEnabled(true).withFont("/f.ttf", 0, "F", "Regular");
+		// The shadow is chosen when glyphs load, so it reloads the font and asks "Keep this font?" (D60).
+		assertFalse(a.sameRendering(a.withClassicShadow(true)));
+		assertFalse(FontSettings.DEFAULTS.classicShadow(), "off by default: the thinner shadow (D37)");
+		assertTrue(a.thinShadow());
+		assertFalse(a.withClassicShadow(true).thinShadow());
+		assertFalse(a.withCrispEdges(true).thinShadow(), "crisp glyphs always have the classic shadow");
+		assertFalse(a.withCrispEdges(true).classicShadowApplies());
+	}
+
+	/** Files from before Classic shadow load with it off, so nobody's shadow changes (D60). */
+	@Test
+	void olderFilesLoadWithTheThinShadow(@TempDir Path dir) throws IOException {
+		Path file = Files.writeString(dir.resolve("fontsys.json"), "{\"configVersion\": 1, \"enabled\": true, \"fontPath\": \"/f.ttf\","
+			+ " \"pending\": {\"enabled\": true, \"fontPath\": \"/g.ttf\"},"
+			+ " \"recentFonts\": [{\"familyName\": \"G\", \"fontPath\": \"/g.ttf\", \"tuning\": {\"size\": 12, \"hinting\": \"light\"}}]}");
+		ConfigStore.LoadResult r = new ConfigStore(file).load();
+		assertFalse(r.reset());
+		assertFalse(r.config().classicShadow);
+		assertFalse(r.config().settings().classicShadow());
+		assertFalse(r.config().pending.classicShadow());
+		assertFalse(r.config().recentFonts.get(0).tuning().classicShadow(), "a tuning kept by 1.2.0");
+	}
+
+	@Test
+	void classicShadowIsSavedAndLoaded(@TempDir Path dir) throws IOException {
+		ConfigStore store = new ConfigStore(dir.resolve("fontsys.json"));
+		FontConfig config = FontConfig.defaults();
+		config.setSettings(FontSettings.DEFAULTS.withEnabled(true).withFont("/f.ttf", 0, "F", "Regular").withClassicShadow(true));
+		config.pending = FontSettings.DEFAULTS.withEnabled(true).withFont("/g.ttf", 0, "G", "Regular");
+		config.recentFonts = List.of(new RecentFont("F", "/f.ttf", FontTuning.of(config.settings())));
+		store.save(config);
+		String json = Files.readString(store.file());
+		assertTrue(json.contains("\"classicShadow\": true"), json);
+		assertTrue(json.contains("\"classicShadow\": false"), json);
+		FontConfig loaded = store.load().config();
+		assertTrue(loaded.settings().classicShadow());
+		assertFalse(loaded.pending.classicShadow());
+		assertTrue(loaded.recentFonts.get(0).tuning().classicShadow(), "each font remembers it (D55)");
+	}
+
 	/** Files from before the hinting setting load as Full, vanilla's hinting, so nobody's text changes (D53). */
 	@Test
 	void olderFilesLoadWithFullHinting(@TempDir Path dir) throws IOException {
@@ -252,6 +295,11 @@ class ConfigStoreTest {
 		assertEquals("Inter", tuned.familyName());
 		assertTrue(tuned.enabled());
 		assertEquals(tuning, FontTuning.of(tuned));
+		FontTuning classic = new FontTuning(13, 3, -0.5F, 1.5F, true, false, Hinting.LIGHT, true);
+		assertTrue(classic.applyTo(inter).classicShadow());
+		assertEquals(classic, FontTuning.of(classic.applyTo(inter)));
+		assertEquals(classic, classic.sanitized(), "sanitizing keeps Classic shadow");
+		assertFalse(FontTuning.DEFAULTS.classicShadow());
 		assertEquals(FontTuning.of(FontSettings.DEFAULTS), FontTuning.DEFAULTS);
 		assertEquals(inter, FontTuning.DEFAULTS.applyTo(inter), "the defaults on a default font change nothing");
 	}

@@ -81,6 +81,38 @@ class ChangeSummaryTest {
 			ChangeSummary.rows(INTER.withCrispEdges(true), light), "nor when crisp mode is turned off");
 	}
 
+	/** Classic shadow (D60): listed after hinting, on and off. */
+	@Test
+	void classicShadow() {
+		assertEquals(List.of(
+			new Row("fontsys.confirm.change.font", literal("Inter Regular"), literal("Inter Regular")),
+			new Row("fontsys.advanced.classic_shadow", key("fontsys.confirm.off"), key("fontsys.confirm.on"))),
+			ChangeSummary.rows(INTER, INTER.withClassicShadow(true)));
+		List<Row> rows = ChangeSummary.rows(INTER.withClassicShadow(true), INTER.withHinting(Hinting.LIGHT).withApplyToUniform(true));
+		assertEquals(List.of("fontsys.confirm.change.font", "fontsys.screen.apply_to_uniform", "fontsys.confirm.change.hinting",
+			"fontsys.advanced.classic_shadow"), rows.stream().map(Row::labelKey).toList());
+		assertEquals(new Row("fontsys.advanced.classic_shadow", key("fontsys.confirm.on"), key("fontsys.confirm.off")), rows.get(3));
+	}
+
+	@Test
+	void crispEdgesHidesClassicShadow() {
+		FontSettings classic = INTER.withClassicShadow(true);
+		List<Row> crispOnly = List.of(
+			new Row("fontsys.confirm.change.font", literal("Inter Regular"), literal("Inter Regular")),
+			new Row("fontsys.screen.crisp", key("fontsys.confirm.off"), key("fontsys.confirm.on")));
+		assertEquals(crispOnly, ChangeSummary.rows(classic, INTER.withCrispEdges(true)), "crisp glyphs always have the classic shadow");
+		assertEquals(crispOnly, ChangeSummary.rows(INTER, classic.withCrispEdges(true)));
+	}
+
+	@Test
+	void fromVanillaListsClassicShadowWhenOn() {
+		assertEquals(List.of(
+			new Row("fontsys.confirm.change.font", key("fontsys.confirm.vanilla_font"), literal("Georgia Bold")),
+			new Row("fontsys.advanced.classic_shadow", null, key("fontsys.confirm.on"))),
+			ChangeSummary.rows(INTER.withEnabled(false), GEORGIA.withClassicShadow(true)));
+		assertEquals(1, ChangeSummary.rows(INTER.withEnabled(false), GEORGIA).size(), "off is the default, so it isn't listed");
+	}
+
 	@Test
 	void fromVanillaListsHintingThatIsNotTheDefault() {
 		List<Row> rows = ChangeSummary.rows(INTER.withEnabled(false), GEORGIA.withHinting(Hinting.NONE));

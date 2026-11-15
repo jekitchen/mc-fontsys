@@ -30,11 +30,13 @@ public final class FontConfig {
 	public boolean crispEdges;
 	/** How outlines are fitted to the pixel grid (D53). Missing in older files: Full, vanilla's hinting. */
 	public Hinting hinting = Hinting.DEFAULT;
+	/** Vanilla's full-unit shadow for smooth glyphs (D60). Missing in older files: off, the thinner shadow (D37). */
+	public boolean classicShadow;
 	/** Fonts applied and kept, newest first, for the top of the font list (UI-17). */
 	public List<RecentFont> recentFonts = new ArrayList<>();
 
 	public FontSettings settings() {
-		return new FontSettings(enabled, fontPath, faceIndex, familyName, styleName, size, oversample, shiftX, shiftY, applyToUniform, crispEdges, hinting).sanitized();
+		return new FontSettings(enabled, fontPath, faceIndex, familyName, styleName, size, oversample, shiftX, shiftY, applyToUniform, crispEdges, hinting, classicShadow).sanitized();
 	}
 
 	public void setSettings(FontSettings s) {
@@ -51,6 +53,7 @@ public final class FontConfig {
 		applyToUniform = v.applyToUniform();
 		crispEdges = v.crispEdges();
 		hinting = v.hinting();
+		classicShadow = v.classicShadow();
 	}
 
 	public static FontConfig defaults() {
