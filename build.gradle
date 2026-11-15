@@ -218,6 +218,17 @@ tasks.register('runNextClientGameTest', net.fabricmc.loom.task.prod.ClientProduc
 	outputs.upToDateWhen { false }
 }
 
+// Graphics backend for the client runs (PRD D61): ./gradlew runClientGameTest -PgraphicsBackend=vulkan
+// (or opengl) passes Minecraft's --graphicsBackend, so a run tests the backend it names. Without it the
+// game picks; 26.4 snapshots pick Vulkan or OpenGL at random on each launch under "default".
+def graphicsBackend = providers.gradleProperty('graphicsBackend').orNull
+if (graphicsBackend) {
+	loom.runs.configureEach { programArgs('--graphicsBackend', graphicsBackend) }
+	tasks.withType(net.fabricmc.loom.task.prod.ClientProductionRunTask).configureEach {
+		programArgs.addAll('--graphicsBackend', graphicsBackend)
+	}
+}
+
 // CI runs the client under its own xvfb-run; stop Loom wrapping dev runs in a second, 8-bit display.
 tasks.withType(net.fabricmc.loom.task.AbstractRunTask).configureEach {
 	useXvfb = false

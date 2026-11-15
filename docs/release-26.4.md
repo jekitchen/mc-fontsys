@@ -27,6 +27,8 @@ How Fontsys moves to Minecraft 26.4 (PRD D61). [RELEASING.md](RELEASING.md) cove
 
 The 26.3 jar doesn't start on 26.4: 26.4 reworked GUI rendering and textures. The mixins are fine. Details are in D61.
 
+**Vulkan:** Fontsys 1.2.0 crashes on Vulkan (`VK_ERROR_DEVICE_LOST`), on 26.3 and on 26.4. That's an existing bug, tracked and fixed separately in D62, and it blocks both 1.3.0 and 1.4.0. It matters more on 26.4, whose default setting picks Vulkan on about half of launches.
+
 ## Tools
 
 | Command | What it does |
@@ -35,6 +37,7 @@ The 26.3 jar doesn't start on 26.4: 26.4 reworked GUI rendering and textures. Th
 | `scripts/next-minecraft.sh bump` | The same, then updates `next_minecraft_version`, `next_fabric_api_version`, `next_modmenu_version`. |
 | `scripts/next-minecraft.sh adopt` | Builds for the next version. It copies `next_*` into `minecraft_version`, `fabric_api_version` and `modmenu_version`, and sets `minecraft_label`, `publish_game_versions` and both ranges to it: Fabric `~26.4-` for a snapshot, `~26.4` for the release, and NeoForge `[26.4,26.5)`. **Port branch only.** |
 | `scripts/next-minecraft.sh compile` | Compiles the mod and the game tests against the next version. |
+| `-PgraphicsBackend=opengl` / `=vulkan` | Pins the graphics backend for the client runs. Without it, 26.4 snapshots pick at random on each launch. |
 | `./gradlew runNextClientGameTest` | Boots the built jar on a production-style client of `next_minecraft_version` with its Fabric API and runs the full game-test suite. |
 | `next-minecraft` workflow | `check`, `compile` and `runNextClientGameTest` on CI: weekly, on demand, and on pushes to `mc-26.4-port`. Not a required check. |
 
@@ -44,7 +47,10 @@ The 26.3 jar doesn't start on 26.4: 26.4 reworked GUI rendering and textures. Th
 2. **After each 26.4 snapshot or pre-release**, on `mc-26.4-port`:
    ```sh
    scripts/next-minecraft.sh bump && scripts/next-minecraft.sh adopt
-   ./gradlew build runClientGameTest runProductionClientGameTest
+   ./gradlew build
+   ./gradlew runClientGameTest -PgraphicsBackend=opengl
+   ./gradlew runProductionClientGameTest -PgraphicsBackend=opengl
+   ./gradlew runProductionClientGameTest -PgraphicsBackend=vulkan
    ```
    Fix what the new snapshot breaks, verifying against `./gradlew genSources`. Record the versions in D61.
 3. **Rebase the port** onto `main` whenever D59, D60 or anything else touching the screens merges. The port keeps its screen changes mechanical (render signatures only) so these rebases stay small.
@@ -65,12 +71,15 @@ Start when `scripts/next-minecraft.sh check` shows Minecraft `26.4` (type `relea
 2. **Suites**, all on 26.4:
    ```sh
    ./gradlew build
-   ./gradlew runClientGameTest
-   ./gradlew runProductionClientGameTest
-   ./gradlew runClientGameTest -PwithSodiumIris      # only if Sodium and Iris exist for 26.4
+   ./gradlew runClientGameTest -PgraphicsBackend=opengl
+   ./gradlew runClientGameTest -PgraphicsBackend=vulkan
+   ./gradlew runProductionClientGameTest -PgraphicsBackend=opengl
+   ./gradlew runProductionClientGameTest -PgraphicsBackend=vulkan
+   ./gradlew runClientGameTest -PwithSodiumIris -PgraphicsBackend=opengl   # only if Sodium and Iris exist for 26.4
    scripts/linux-vm.sh test
    ```
-   CI runs the same on the port PR. The NeoForge jobs report "skipped: Fabric-only build".
+   - CI runs the same on the port PR, on OpenGL, plus a non-blocking `client-game-test (production-jar-vulkan)` job. Once the Vulkan fix (D62) lands, make that job blocking: drop its `experimental` flag, and the owner adds it to the required checks.
+   - The NeoForge jobs report "skipped: Fabric-only build".
 3. **Cut `mc/26.3`** from main's last 26.3 commit, just before the port merges:
    ```sh
    git fetch origin
