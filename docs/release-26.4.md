@@ -1,6 +1,17 @@
 # Minecraft 26.4: release-day runbook
 
-How Fontsys moves to Minecraft 26.4 (PRD D61). The goal is Fontsys 1.3.0 on the stores soon after Mojang releases 26.4, and not before. [RELEASING.md](RELEASING.md) covers the release itself; this page covers getting there.
+How Fontsys moves to Minecraft 26.4 (PRD D61). [RELEASING.md](RELEASING.md) covers a release itself; this page covers getting there.
+
+## The plan (owner, 2026-11-15)
+
+- **1.3.0 ships for 26.3** with the toggle key (D59) and classic shadow (D60), once they merge. It doesn't wait for 26.4.
+- **1.4.0 is the 26.4 port, for 26.4 only.** It's prepared now on branch `mc-26.4-port` (a draft PR) against the 26.4 snapshots, so release day is the version bump and the tests.
+  - Fabric first.
+  - NeoForge follows as **1.4.1** once NeoForge publishes 26.4 builds (see "NeoForge follow-up" below).
+  - 26.3 stays on 1.3.x; D15 (latest release only) applies.
+- **One jar per Minecraft version from 26.4 on**, built from the same code at different points in history (replaces D32).
+  - `main` moves to 26.4 when the port merges, on release day.
+  - Just before that merge, cut `mc/26.3` from main's last 26.3 commit, for critical 1.3.x fixes only.
 
 ## Where things stand (2026-11-15)
 
@@ -14,13 +25,7 @@ How Fontsys moves to Minecraft 26.4 (PRD D61). The goal is Fontsys 1.3.0 on the 
 | NeoForge | none for 26.4; NeoForge started 26.2 and 26.3 at their release (`26.x.0.0-beta`) | NeoForged Maven |
 | Sodium, Iris | none for 26.4 | Modrinth |
 
-`scripts/next-minecraft.sh check` prints the current list. `bump` writes the newest builds into `next_*` in `gradle.properties`.
-
-**The 26.3 jar doesn't start on 26.4.** Its mixins all apply (every target is unchanged), but the game crashes building its first font: `NoClassDefFoundError: net/minecraft/client/renderer/texture/AbstractTexture`. Compiling against 26.4 gives 37 errors in 10 files. 26.4 reworked GUI rendering (no mouse or partial-tick arguments, `GuiPipeline`) and textures (`AbstractTexture` removed). There's no API common to both versions, so one jar compiled against 26.3 can't cover 26.4. **The owner picks how to proceed** (PRD D61):
-
-- **A.** One multi-version jar: per-version classes compiled against each Minecraft, picked at run time.
-- **B.** Two jars from the same code, `+26.3` and `+26.4` (D32's fallback).
-- **C.** 1.3.0 for 26.4 only; 26.3 stays on 1.2.x (D15). This is the recommendation.
+The 26.3 jar doesn't start on 26.4: 26.4 reworked GUI rendering and textures. The mixins are fine. Details are in D61.
 
 ## Tools
 
@@ -28,76 +33,91 @@ How Fontsys moves to Minecraft 26.4 (PRD D61). The goal is Fontsys 1.3.0 on the 
 |---|---|
 | `scripts/next-minecraft.sh check` | Newest Minecraft 26.4, Fabric API (and the build it targets), Mod Menu and NeoForge, compared with `gradle.properties`. Exit 0 = up to date, 3 = newer builds out. |
 | `scripts/next-minecraft.sh bump` | The same, then updates `next_minecraft_version`, `next_fabric_api_version`, `next_modmenu_version`. |
-| `scripts/next-minecraft.sh compile` | Compiles the mod and the game tests against the next version (the port's to-do list). |
-| `./gradlew runNextClientGameTest` | Boots the built jar on a production-style client of `next_minecraft_version` with its Fabric API and runs the full game-test suite. The jar is a test copy whose `fabric.mod.json` declares `next_fabric_minecraft_range`, so Fabric Loader accepts it; the classes are the built ones. Results are in `build/run/nextClientGameTest/`. |
-| `next-minecraft` workflow | The three checks above on CI: weekly, on demand (Actions → next-minecraft → Run workflow) and on pushes to `mc-26.4`. Not a required check. |
+| `scripts/next-minecraft.sh adopt` | Builds for the next version. It copies `next_*` into `minecraft_version`, `fabric_api_version` and `modmenu_version`, and sets `minecraft_label`, `publish_game_versions` and both ranges to it: Fabric `~26.4-` for a snapshot, `~26.4` for the release, and NeoForge `[26.4,26.5)`. **Port branch only.** |
+| `scripts/next-minecraft.sh compile` | Compiles the mod and the game tests against the next version. |
+| `./gradlew runNextClientGameTest` | Boots the built jar on a production-style client of `next_minecraft_version` with its Fabric API and runs the full game-test suite. |
+| `next-minecraft` workflow | `check`, `compile` and `runNextClientGameTest` on CI: weekly, on demand, and on pushes to `mc-26.4-port`. Not a required check. |
 
 ## Until 26.4 is released
 
-1. After each snapshot or pre-release: `scripts/next-minecraft.sh bump`, then `compile` and `./gradlew runNextClientGameTest`. Note any new breakage in D61.
-2. Port the code once the owner has chosen A, B or C and the 1.3.0 feature PRs (D59 toggle key, D60 classic shadow) have merged; they change the same screens. The port's to-do list, from snapshot 8:
-   - Screens (`FontConfigScreen`, `AdvancedFontScreen`, `KeepOrRevertScreen`, `UnappliedChangesScreen`): `extractRenderState(graphics)` without mouse or partial ticks; the mouse is `graphics.mouseX()` / `mouseY()`, partial ticks `graphics.partialTicks()`.
-   - The font list: `extractWidgetRenderState(graphics)`; entries implement `extractContent(GuiGraphicsExtractor, boolean hovered)`.
-   - `AbstractWidget.visible` is protected: `setVisible(...)`.
-   - `RenderPipelines.GUI_TEXTURED` → `GuiPipeline.TEXTURED` (`PreviewPanel`); `RenderPipeline` → `GuiPipeline` in `MipmappedSheetGlyph`.
-   - `MipmappedGlyphPage(s)`: `AbstractTexture` and `Dumpable` are gone. Hold a `TextureResources` and register it with `textureManager.registerProvider(id, new ExternalTextureProvider(resources))`, released in `close()`, as 26.4's `FontTexture` does.
-   - Uploads: `nativeImage.writeToGpuTexture(encoder, texture, mip, layer, x, y)` instead of `CommandEncoder.writeToTexture(texture, image, ...)` (`ColorAtlasGlyph`, `MipmappedGlyphPage`).
-   - `Mth.clamp(double, double, double)` is gone: `Math.clamp` (`ValueSlider`).
-   - Then the game tests in `src/gametest`, which don't compile yet because the mod doesn't.
-3. The draft PR on branch `mc-26.4` carries the release-day metadata. Keep it rebased on `main`.
+1. **1.3.0 for 26.3** comes from `main` as usual (RELEASING.md), once D59 and D60 merge.
+2. **After each 26.4 snapshot or pre-release**, on `mc-26.4-port`:
+   ```sh
+   scripts/next-minecraft.sh bump && scripts/next-minecraft.sh adopt
+   ./gradlew build runClientGameTest runProductionClientGameTest
+   ```
+   Fix what the new snapshot breaks, verifying against `./gradlew genSources`. Record the versions in D61.
+3. **Rebase the port** onto `main` whenever D59, D60 or anything else touching the screens merges. The port keeps its screen changes mechanical (render signatures only) so these rebases stay small.
 
-## Release day
+## Release day: 1.4.0 for 26.4 (Fabric)
 
-Start when `scripts/next-minecraft.sh check` shows Minecraft `26.4` (type `release`) and a Fabric API built for `26.4`. NeoForge usually follows within a day or two as `26.4.0.0-beta` and later builds. Check https://maven.neoforged.net and the NeoForge 26.4 MDK (NeoForgeMDKs on GitHub) for its ModDevGradle version.
+Start when `scripts/next-minecraft.sh check` shows Minecraft `26.4` (type `release`) and a Fabric API built for `26.4`. 1.3.0 should already be out.
 
-### 1. Versions
+1. **Versions**, on `mc-26.4-port`:
+   ```sh
+   scripts/next-minecraft.sh bump && scripts/next-minecraft.sh adopt
+   ```
+   - `adopt` sets `fabric_minecraft_range=~26.4`, `neoforge_minecraft_range=[26.4,26.5)`, `minecraft_label=26.4` and `publish_game_versions=26.4`.
+   - Leave `neoforge_enabled=false` unless NeoForge already has a 26.4 build (then see the NeoForge follow-up, below, and ship both in 1.4.0).
+   - Sodium and Iris for 26.4: if they exist, set `sodium_version` and `iris_version`; if not, `-PwithSodiumIris` stays skipped. Ask the owner whether to release without that check.
+   - Quilt: try `-PquiltLoaderVersion=<newest>` if Quilt publishes a 26.4 profile; not listed either way (D57).
+   - Record every version and the date in D61.
+2. **Suites**, all on 26.4:
+   ```sh
+   ./gradlew build
+   ./gradlew runClientGameTest
+   ./gradlew runProductionClientGameTest
+   ./gradlew runClientGameTest -PwithSodiumIris      # only if Sodium and Iris exist for 26.4
+   scripts/linux-vm.sh test
+   ```
+   CI runs the same on the port PR. The NeoForge jobs report "skipped: Fabric-only build".
+3. **Cut `mc/26.3`** from main's last 26.3 commit, just before the port merges:
+   ```sh
+   git fetch origin
+   git push origin origin/main:refs/heads/mc/26.3
+   ```
+4. **Merge the port.** Mark the `mc-26.4-port` PR ready with the suite results. The owner runs the manual checks (RELEASING.md, "Before the release") on 26.4 and merges it. `main` is now 26.4.
+5. **Release 1.4.0** from `main` as in RELEASING.md: `mod_version=1.4.0`, the `CHANGELOG.md` heading `## [1.4.0] - <date>`, PRD status and change log, then tag `v1.4.0`.
+   - The jar is `fontsys-1.4.0+26.4.jar`.
+   - `publish` lists it for the loaders whose metadata the jar carries (Fabric only) and the game versions in `publish_game_versions` (26.4).
+   - In the store description, say that 26.3 players stay on 1.3.x and that NeoForge for 26.4 follows.
 
-On the `mc-26.4` branch:
+## Fabric-only builds
 
-```sh
-scripts/next-minecraft.sh bump        # next_* -> 26.4 and its Fabric API and Mod Menu
-```
+While NeoForge has no build for the target Minecraft, `gradle.properties` has `neoforge_enabled=false`:
 
-Then set in `gradle.properties` (all options):
+- `settings.gradle` leaves out the `neoforge` subproject, so nothing compiles against NeoForge.
+- The jar has no `neoforge` package and no `META-INF/neoforge.mods.toml`.
+- `checkSharedBytecode` isn't registered.
+- `checkModJar` checks the Fabric half, and fails if any NeoForge part is in the jar.
+- CI's NeoForge jobs check the setting first and skip their steps, so the required check names stay green.
+- `publish` reads the loaders from the jar.
 
-- `neoforge_version`, `moddev_version`: from NeoForged's Maven and the 26.4 MDK.
-- `sodium_version`, `iris_version`, and the NeoForge Sodium and Iris lines: 26.4 builds from Modrinth if they exist. If they don't, the `-PwithSodiumIris` runs can't pass yet; ask the owner whether to release without them, as for 26.4 snapshots.
-- `quilt_*`: from https://meta.quiltmc.org/v3/versions/loader/26.4 if Quilt has a 26.4 profile.
-- Record every version and the date in PRD D61 (or a new decision row), as D7 does.
+`-Pneoforge_enabled=true` turns NeoForge back on for one build.
 
-Then, depending on the owner's choice:
+## NeoForge follow-up: 1.4.1
 
-| | A: one jar | B: two jars | C: 26.4 only (recommended) |
-|---|---|---|---|
-| `minecraft_version` | `26.3` (the 26.3 build); 26.4 classes built against `26.4` | one build per version | `26.4` |
-| `fabric_api_version`, `modmenu_version` | unchanged for the 26.3 build | per build | 26.4's |
-| `fabric_minecraft_range` | `>=26.3 <26.5-` | `~26.3` and `~26.4` | `~26.4` |
-| `neoforge_minecraft_range` | `[26.3,26.5)` | `[26.3,26.4)` and `[26.4,26.5)` | `[26.4,26.5)` |
-| `minecraft_label` | `26.3-26.4` | `26.3` and `26.4` | `26.4` |
-| `publish_game_versions` | `26.3,26.4` | `26.3` and `26.4` | `26.4` |
+Once NeoForge publishes 26.4 builds (watch https://maven.neoforged.net or `scripts/next-minecraft.sh check`):
 
-The draft PR already holds column A. For C, change those lines as in column C. In C, `next_*` and `runNextClientGameTest` are redundant once `minecraft_version=26.4`; leave them pointing at 26.4 until 26.5 snapshots start.
+1. On a branch from `main`:
+   - set `neoforge_enabled=true`;
+   - set `neoforge_version` and `moddev_version` (from NeoForged's Maven and the NeoForge 26.4 MDK);
+   - set the NeoForge Sodium line if Sodium has a 26.4 NeoForge build.
+2. Check the shared mixins against NeoForge's patched 26.4 sources (`neoforge/build/moddev/artifacts/`), then run:
+   ```sh
+   ./gradlew build                                   # checkSharedBytecode and checkModJar for both loaders
+   ./gradlew :neoforge:neoforgeSmokeTest
+   ./gradlew :neoforge:neoforgeSmokeTest -PwithSodium  # if Sodium has a 26.4 NeoForge build
+   ./gradlew runProductionClientGameTest
+   ```
+3. Release **1.4.1**: the one jar for both loaders again (D54), listed for Fabric and NeoForge. The changelog says "Adds NeoForge for Minecraft 26.4".
 
-### 2. Suites
+**Why a new version, not NeoForge added to 1.4.0:** the 1.4.0 jar has no NeoForge metadata, so it can't run on NeoForge. Adding NeoForge to 1.4.0 would mean a second, different file under the same version number. CurseForge files can't change once uploaded, and Modrinth would show two jars that differ for the same version. That breaks D54's "one file for both loaders" and confuses anyone comparing files. A new patch version keeps one file per version, and Fabric players just see a small update.
 
-All must pass on 26.4 (PRD D32: a version enters the jar's range only after both game-test suites pass on it):
+## 1.3.x fixes for 26.3
 
-```sh
-./gradlew build
-./gradlew runClientGameTest
-./gradlew runClientGameTest -PwithSodiumIris          # needs Sodium and Iris for 26.4
-./gradlew runProductionClientGameTest
-./gradlew runNextClientGameTest                       # A only: the jar on a 26.4 client
-./gradlew :neoforge:neoforgeSmokeTest
-./gradlew :neoforge:neoforgeSmokeTest -PwithSodium
-./gradlew runQuiltClientGameTest                      # if Quilt has a 26.4 profile
-scripts/linux-vm.sh test
-```
+Critical fixes only, on `mc/26.3`:
 
-In CI, the draft PR's `client-game-test (production-jar-26.4)` job is non-blocking while 26.4 is a snapshot. On release day remove its `continue-on-error`, and the owner adds it to the `main` ruleset's required checks (A only; in C the regular jobs already run on 26.4).
-
-### 3. Hand off to the release
-
-1. Mark the `mc-26.4` PR ready for review, with the suite results. The owner runs the manual checks (RELEASING.md, "Before the release") on 26.4 and merges it.
-2. Release PR, as in RELEASING.md: `mod_version=1.3.0`, the `CHANGELOG.md` heading `## [1.3.0] - <date>`, PRD status and change log. In C, note in the store description that 26.3 players stay on 1.2.0.
-3. After the merge, tag `v1.3.0`. The jar is `build/libs/fontsys-1.3.0+<minecraft_label>.jar`; the `release` and `publish` workflows take the label and game versions from `gradle.properties`.
+1. Branch from `mc/26.3`, open the PR against `mc/26.3`, bump `mod_version` to `1.3.x`.
+2. Tag the merge commit `v1.3.x`. The `release` and `publish` workflows run from the tag, so they work on any branch; the jar is `+26.3` and lists 26.3.
+3. If the fix also applies to 26.4, port it to `main` in its own PR.

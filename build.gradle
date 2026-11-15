@@ -176,12 +176,12 @@ tasks.register('runQuiltClientGameTest', QuiltClientProductionRunTask) {
 
 // Next Minecraft version (PRD D61): ./gradlew runNextClientGameTest
 // The production-style run above on next_minecraft_version (gradle.properties) instead of the
-// version the jar is built against: the same built jar, so it shows whether the one jar (D32)
-// still works there, with that version's Fabric API, the same JVM arguments (D56) and the full
-// game-test suite (compiled against this project's Minecraft, like the jar). Fabric Loader would
-// refuse the jar on a version outside fabric_minecraft_range, so the run uses a copy whose
-// fabric.mod.json declares next_fabric_minecraft_range; nothing else in the jar changes.
-// The jar players get is unchanged.
+// version the jar is built against: the same built jar, so it shows whether this jar runs there,
+// with that version's Fabric API, the same JVM arguments (D56) and the full game-test suite
+// (compiled against this project's Minecraft, like the jar). Fabric Loader would refuse the jar
+// on a version outside fabric_minecraft_range, so the run uses a copy whose fabric.mod.json
+// declares next_fabric_minecraft_range; nothing else in the jar changes, and the jar players get
+// is untouched.
 def nextFabricRange = project.next_fabric_minecraft_range
 def nextMinecraftJar = tasks.register('nextMinecraftJar', Zip) {
 	description = 'The built jar with its Fabric Minecraft range widened to the next version, for runNextClientGameTest (PRD D61).'

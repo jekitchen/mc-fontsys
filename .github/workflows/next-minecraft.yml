@@ -1,17 +1,17 @@
 # The next Minecraft version (PRD D61): does the jar built from this branch still work on it, and
 # does the code still compile against it? The versions are next_* in gradle.properties; keep them
-# current with scripts/next-minecraft.sh bump. Not a required check: while the next version is a
-# snapshot it is expected to fail until Fontsys is ported (see docs/release-26.4.md).
+# current with scripts/next-minecraft.sh bump. Not a required check: on main (26.3) it fails
+# while the next version needs a port; on the port branch it should pass (docs/release-26.4.md).
 #
 # Runs weekly (Mojang usually ships snapshots early in the week), on demand, and on pushes to the
-# mc-26.4 branch, the release-day draft.
+# mc-26.4-port branch, the 26.4 port (PRD D61).
 name: next-minecraft
 on:
   schedule:
     - cron: '0 6 * * 4'
   workflow_dispatch:
   push:
-    branches: [mc-26.4]
+    branches: [mc-26.4-port]
 
 permissions:
   contents: read
