@@ -3,7 +3,7 @@ plugins {
 	id 'net.fabricmc.fabric-loom' version "${loom_version}"
 }
 
-version = "${project.mod_version}+${project.minecraft_version}"
+version = "${project.mod_version}+${project.minecraft_label}"
 group = project.maven_group
 
 base {
@@ -174,17 +174,72 @@ tasks.register('runQuiltClientGameTest', QuiltClientProductionRunTask) {
 	outputs.upToDateWhen { false }
 }
 
+// Next Minecraft version (PRD D61): ./gradlew runNextClientGameTest
+// The production-style run above on next_minecraft_version (gradle.properties) instead of the
+// version the jar is built against: the same built jar, so it shows whether this jar runs there,
+// with that version's Fabric API, the same JVM arguments (D56) and the full game-test suite
+// (compiled against this project's Minecraft, like the jar). Fabric Loader would refuse the jar
+// on a version outside fabric_minecraft_range, so the run uses a copy whose fabric.mod.json
+// declares next_fabric_minecraft_range; nothing else in the jar changes, and the jar players get
+// is untouched.
+def nextFabricRange = project.next_fabric_minecraft_range
+def nextMinecraftJar = tasks.register('nextMinecraftJar', Zip) {
+	description = 'The built jar with its Fabric Minecraft range widened to the next version, for runNextClientGameTest (PRD D61).'
+	dependsOn 'jar'
+	inputs.property('range', nextFabricRange)
+	from(zipTree(tasks.named('jar').flatMap { it.archiveFile })) {
+		filesMatching('fabric.mod.json') {
+			filter { String line -> line.replaceFirst(/"minecraft": "[^"]*"/, "\"minecraft\": \"${nextFabricRange}\"") }
+		}
+	}
+	archiveFileName = 'fontsys-next-minecraft.jar'
+	destinationDirectory = layout.buildDirectory.dir('next-minecraft-libs')
+}
+def nextModsScope = configurations.dependencyScope('nextProductionRuntimeMods')
+def nextModsFiles = configurations.resolvable('nextProductionRuntimeModsFiles') {
+	extendsFrom(nextModsScope.get())
+	// The Fabric API jar nests its modules; their Maven dependencies would add them twice.
+	transitive = false
+}
+dependencies {
+	nextProductionRuntimeMods "net.fabricmc.fabric-api:fabric-api:${project.next_fabric_api_version}"
+}
+tasks.register('runNextClientGameTest', net.fabricmc.loom.task.prod.ClientProductionRunTask) {
+	group = 'verification'
+	description = 'Runs the client game tests against the built jar on the next Minecraft version (PRD D61).'
+	minecraftVersion = project.next_minecraft_version
+	mods.setFrom(nextMinecraftJar, gametestJar, nextModsFiles)
+	runDir = layout.buildDirectory.dir('run/nextClientGameTest')
+	// Mojang's arguments for 26.4 snapshots are the same plain list as 26.3's (checked 2026-11-15).
+	jvmArgs.addAll(mojangJvmArgs)
+	jvmArgs.add("-Dfabric.client.gametest")
+	jvmArgs.add("-Dfabric.client.gametest.disableNetworkSynchronizer=true")
+	useXVFB = false
+	outputs.upToDateWhen { false }
+}
+
+// Graphics backend for the client runs (PRD D61): ./gradlew runClientGameTest -PgraphicsBackend=vulkan
+// (or opengl) passes Minecraft's --graphicsBackend, so a run tests the backend it names. Without it the
+// game picks; 26.4 snapshots pick Vulkan or OpenGL at random on each launch under "default".
+def graphicsBackend = providers.gradleProperty('graphicsBackend').orNull
+if (graphicsBackend) {
+	loom.runs.configureEach { programArgs('--graphicsBackend', graphicsBackend) }
+	tasks.withType(net.fabricmc.loom.task.prod.ClientProductionRunTask).configureEach {
+		programArgs.addAll('--graphicsBackend', graphicsBackend)
+	}
+}
+
 // CI runs the client under its own xvfb-run; stop Loom wrapping dev runs in a second, 8-bit display.
 tasks.withType(net.fabricmc.loom.task.AbstractRunTask).configureEach {
 	useXvfb = false
 }
 
 processResources {
-	def version = project.version
-	inputs.property "version", version
+	def props = [version: project.version, minecraft_range: project.fabric_minecraft_range]
+	inputs.properties props
 
 	filesMatching("fabric.mod.json") {
-		expand "version": version
+		expand props
 	}
 }
 

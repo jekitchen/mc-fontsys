@@ -1,0 +1,79 @@
+# The next Minecraft version (PRD D61): does the jar built from this branch still work on it, and
+# does the code still compile against it? The versions are next_* in gradle.properties; keep them
+# current with scripts/next-minecraft.sh bump. Not a required check: on main (26.3) it fails
+# while the next version needs a port; on the port branch it should pass (docs/release-26.4.md).
+#
+# Runs weekly (Mojang usually ships snapshots early in the week), on demand, and on pushes to the
+# mc-26.4-port branch, the 26.4 port (PRD D61).
+name: next-minecraft
+on:
+  schedule:
+    - cron: '0 6 * * 4'
+  workflow_dispatch:
+  push:
+    branches: [mc-26.4-port]
+
+permissions:
+  contents: read
+
+jobs:
+  # Are there newer builds than gradle.properties names? Fails if so, as a reminder to bump.
+  versions:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Look up the newest versions
+        run: bash scripts/next-minecraft.sh check
+
+  # The built jar on a production-style Fabric client of the next version, full game-test suite.
+  production-jar:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Set up JDK 25
+        uses: actions/setup-java@v5
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+      - name: Install Xvfb and Mesa
+        run: sudo apt-get update && sudo apt-get install -y xvfb libgl1-mesa-dri libglx-mesa0 libegl1 mesa-vulkan-drivers
+      - name: Run client game tests on the next Minecraft
+        env:
+          # Same display setup as build.yml's client game tests.
+          SDL_VIDEO_FORCE_EGL: '1'
+        run: |
+          chmod +x ./gradlew
+          xvfb-run -a -s "-screen 0 1920x1080x24" ./gradlew runNextClientGameTest
+      - name: Upload screenshots and logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: next-minecraft-production-jar
+          path: |
+            build/run/nextClientGameTest/screenshots/
+            build/run/nextClientGameTest/logs/
+            build/run/nextClientGameTest/crash-reports/
+          if-no-files-found: ignore
+
+  # The code compiled against the next version: the list of what a port has to change.
+  compile:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Set up JDK 25
+        uses: actions/setup-java@v5
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+      - name: Compile against the next Minecraft
+        run: |
+          chmod +x ./gradlew
+          bash scripts/next-minecraft.sh compile

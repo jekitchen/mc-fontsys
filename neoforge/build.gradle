@@ -13,7 +13,7 @@ plugins {
 	id 'net.neoforged.moddev' version "${moddev_version}"
 }
 
-version = "${project.mod_version}+${project.minecraft_version}"
+version = "${project.mod_version}+${project.minecraft_label}"
 group = project.maven_group
 
 base {
@@ -209,7 +209,7 @@ processResources {
 	def props = [
 		version          : project.version,
 		neoforge_version : neoforgeVersion,
-		minecraft_version: project.minecraft_version,
+		minecraft_range  : project.neoforge_minecraft_range,
 	]
 	inputs.properties props
 
