@@ -118,8 +118,8 @@ public class StyledTextGameTest implements FabricClientGameTest {
 		}
 
 		@Override
-		public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
-			super.extractRenderState(graphics, mouseX, mouseY, a);
+		public void extractRenderState(GuiGraphicsExtractor graphics) {
+			super.extractRenderState(graphics);
 			String sample = "The quick brown fox jumps over the lazy dog 0123456789";
 			int x = 12;
 			int y = 12;

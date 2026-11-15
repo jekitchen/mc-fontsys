@@ -137,10 +137,10 @@ public final class FontConfigScreen extends Screen {
 			setFocused(searchBox);
 		}).bounds(MARGIN + listWidth - CLEAR_SIZE, TOP, CLEAR_SIZE, CLEAR_SIZE).build();
 		clearSearch.setTooltip(Tooltip.create(Component.translatable("fontsys.screen.search.clear")));
-		clearSearch.visible = !search.isEmpty();
+		clearSearch.setVisible(!search.isEmpty());
 		searchBox.setResponder(value -> {
 			search = value;
-			clearSearch.visible = !value.isEmpty();
+			clearSearch.setVisible(!value.isEmpty());
 			refreshList();
 		});
 		addRenderableWidget(searchBox);
@@ -718,8 +718,11 @@ public final class FontConfigScreen extends Screen {
 	// ---- Drawing -------------------------------------------------------------------------------
 
 	@Override
-	public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
-		super.extractRenderState(graphics, mouseX, mouseY, a);
+	public void extractRenderState(GuiGraphicsExtractor graphics) {
+		super.extractRenderState(graphics);
+		// 26.4 passes the mouse through the extractor, not as arguments (PRD D61).
+		int mouseX = graphics.mouseX();
+		int mouseY = graphics.mouseY();
 		graphics.centeredText(font, title, width / 2, 8, 0xFFFFFFFF);
 		extractPreview(graphics, mouseX, mouseY);
 		if (list.children().isEmpty()) {
@@ -786,9 +789,9 @@ public final class FontConfigScreen extends Screen {
 
 		/** Starts each frame's names: their fonts load only for the rows drawn below (D49). */
 		@Override
-		public void extractWidgetRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
+		public void extractWidgetRenderState(GuiGraphicsExtractor graphics) {
 			nameFonts.beginFrame(RuntimeFontPackSource.currentGuiScale(), minecraft.gui.overlay() == null);
-			super.extractWidgetRenderState(graphics, mouseX, mouseY, a);
+			super.extractWidgetRenderState(graphics);
 		}
 
 		@Override
@@ -811,7 +814,7 @@ public final class FontConfigScreen extends Screen {
 			}
 
 			@Override
-			public void extractContent(GuiGraphicsExtractor graphics, int mouseX, int mouseY, boolean hovered, float a) {
+			public void extractContent(GuiGraphicsExtractor graphics, boolean hovered) {
 				int y = getContentYMiddle() - 4;
 				int right = getContentX() + getContentWidth() - 2;
 				Visibility v = family.visibility();

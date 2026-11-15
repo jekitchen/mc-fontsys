@@ -94,7 +94,7 @@ public class AdvancedScreenGameTest implements FabricClientGameTest {
 			int w = mc.gui.screen().width;
 			int h = mc.gui.screen().height;
 			List<AbstractWidget> all = mc.gui.screen().children().stream()
-				.filter(c -> c instanceof AbstractWidget a && a.visible).map(c -> (AbstractWidget) c).toList();
+				.filter(c -> c instanceof AbstractWidget a && a.isVisible()).map(c -> (AbstractWidget) c).toList();
 			List<AbstractWidget> checked = mc.gui.screen() instanceof FontConfigScreen
 				? all.stream().filter(a -> a.getMessage().getString().startsWith("Advanced")
 					|| a.getMessage().getString().equals(Component.translatable("fontsys.screen.crisp").getString())).toList()
@@ -140,9 +140,7 @@ public class AdvancedScreenGameTest implements FabricClientGameTest {
 
 		// Shift Y, from the keyboard as vanilla sliders work: Tab to it (Shift X comes first);
 		// a slider reached with Tab takes the arrow keys straight away. Right until it reads 1.
-		context.getInput().pressKey(InputConstants.KEY_TAB);
-		context.getInput().pressKey(InputConstants.KEY_TAB);
-		require(focusedLabel(context).startsWith("Shift Y"), "Tab, Tab reaches Shift Y, not " + focusedLabel(context));
+		tabToShiftY(context);
 		String target = Component.translatable("fontsys.screen.shift_y", "1").getString();
 		for (int i = 0; i < 400 && !sliderLabel(context, "Shift Y").equals(target); i++) {
 			context.getInput().pressKey(InputConstants.KEY_RIGHT);
@@ -245,8 +243,7 @@ public class AdvancedScreenGameTest implements FabricClientGameTest {
 		context.clickScreenButton("fontsys.screen.advanced");
 		context.waitForScreen(AdvancedFontScreen.class);
 		context.waitTicks(5);
-		context.getInput().pressKey(InputConstants.KEY_TAB);
-		context.getInput().pressKey(InputConstants.KEY_TAB);
+		tabToShiftY(context);
 		String target = Component.translatable("fontsys.screen.shift_y", value).getString();
 		for (int i = 0; i < 400 && !sliderLabel(context, "Shift Y").equals(target); i++) {
 			context.getInput().pressKey(InputConstants.KEY_RIGHT);
@@ -292,6 +289,21 @@ public class AdvancedScreenGameTest implements FabricClientGameTest {
 	}
 
 	// ---- helpers -------------------------------------------------------------------------------
+
+	/**
+	 * Tabs to Shift Y, the second control. Two Tabs from a screen opened with the mouse; on 26.4 a
+	 * screen opened by the game test's click can already have the first control focused, so Tab
+	 * until it is reached, and fail if that takes more than the two controls before it (PRD D61).
+	 */
+	private static void tabToShiftY(ClientGameTestContext context) {
+		int tabs = 0;
+		while (!focusedLabel(context).startsWith("Shift Y") && tabs < 3) {
+			context.getInput().pressKey(InputConstants.KEY_TAB);
+			tabs++;
+		}
+		require(focusedLabel(context).startsWith("Shift Y"), "Tab reaches Shift Y, not " + focusedLabel(context));
+		Fontsys.LOGGER.info("[gametest] Shift Y reached with {} Tab(s)", tabs);
+	}
 
 	private static String focusedLabel(ClientGameTestContext context) {
 		return context.computeOnClient(mc -> {

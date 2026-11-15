@@ -48,33 +48,57 @@ jobs:
     runs-on: ubuntu-24.04
     # A client that can't open its window waits forever; fail fast instead of after 6 hours.
     timeout-minutes: 30
+    continue-on-error: ${{ matrix.experimental == true }}
     strategy:
       fail-fast: false
       matrix:
         include:
+          # OpenGL, pinned: 26.4 snapshots pick Vulkan or OpenGL at random each launch (PRD D61).
           - mods: vanilla
-            task: runClientGameTest
+            task: runClientGameTest -PgraphicsBackend=opengl
             run-dir: clientGameTest
           - mods: sodium-iris
-            task: runClientGameTest -PwithSodiumIris
+            task: runClientGameTest -PwithSodiumIris -PgraphicsBackend=opengl
             run-dir: clientGameTest
           - mods: production-jar
-            task: runProductionClientGameTest
+            task: runProductionClientGameTest -PgraphicsBackend=opengl
             run-dir: productionClientGameTest
+          # The built jar on Vulkan, which 26.4 picks on about half of launches. Non-blocking while
+          # the existing Vulkan crash (VK_ERROR_DEVICE_LOST, 1.2.0 on 26.3 and 26.4) is open (PRD D62);
+          # when the fix lands, remove experimental and add this check to the main ruleset.
+          - mods: production-jar-vulkan
+            task: runProductionClientGameTest -PgraphicsBackend=vulkan
+            run-dir: productionClientGameTest
+            experimental: true
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+      # Minecraft versions without Sodium and Iris builds skip the sodium-iris run (PRD D61).
+      - name: What this build covers
+        id: scope
+        run: |
+          prop() { sed -n "s/^$1=//p" gradle.properties | tr -d '\r'; }
+          run=true
+          if [ "${{ matrix.mods }}" = sodium-iris ] && [ -z "$(prop sodium_version)" ]; then
+            run=false
+            echo "::notice::Skipped: Sodium and Iris have no build for Minecraft $(prop minecraft_version) yet (sodium_version is empty)."
+          fi
+          echo "run=$run" >> "$GITHUB_OUTPUT"
       - name: Set up JDK 25
+        if: steps.scope.outputs.run == 'true'
         uses: actions/setup-java@v5
         with:
           java-version: '25'
           distribution: 'temurin'
       - name: Set up Gradle
+        if: steps.scope.outputs.run == 'true'
         uses: gradle/actions/setup-gradle@v6
       # Software OpenGL (llvmpipe) and, as in Fabric API's CI, software Vulkan.
       - name: Install Xvfb and Mesa
+        if: steps.scope.outputs.run == 'true'
         run: sudo apt-get update && sudo apt-get install -y xvfb libgl1-mesa-dri libglx-mesa0 libegl1 mesa-vulkan-drivers
       - name: Run client game tests
+        if: steps.scope.outputs.run == 'true'
         env:
           # 26.3 asks SDL for an sRGB-capable OpenGL framebuffer. Xvfb's GLX offers no sRGB visuals,
           # so OpenGL fails there; EGL handles sRGB per surface instead. Sodium and Iris need OpenGL.
@@ -84,7 +108,7 @@ jobs:
           # Virtual display for the client window.
           xvfb-run -a -s "-screen 0 1920x1080x24" ./gradlew ${{ matrix.task }}
       - name: Upload screenshots and logs
-        if: always()
+        if: always() && steps.scope.outputs.run == 'true'
         uses: actions/upload-artifact@v7
         with:
           name: client-game-test-${{ matrix.mods }}
@@ -104,16 +128,31 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+      # A Fabric-only build (neoforge_enabled=false, PRD D61) has nothing to test on NeoForge.
+      - name: What this build covers
+        id: scope
+        run: |
+          prop() { sed -n "s/^$1=//p" gradle.properties | tr -d '\r'; }
+          run=true
+          if [ "$(prop neoforge_enabled)" = false ]; then
+            run=false
+            echo "::notice::Skipped: Fabric-only build; NeoForge has no build for Minecraft $(prop minecraft_version) yet."
+          fi
+          echo "run=$run" >> "$GITHUB_OUTPUT"
       - name: Set up JDK 25
+        if: steps.scope.outputs.run == 'true'
         uses: actions/setup-java@v5
         with:
           java-version: '25'
           distribution: 'temurin'
       - name: Set up Gradle
+        if: steps.scope.outputs.run == 'true'
         uses: gradle/actions/setup-gradle@v6
       - name: Install Xvfb and Mesa
+        if: steps.scope.outputs.run == 'true'
         run: sudo apt-get update && sudo apt-get install -y xvfb libgl1-mesa-dri libglx-mesa0 libegl1 mesa-vulkan-drivers
       - name: Run NeoForge smoke test
+        if: steps.scope.outputs.run == 'true'
         env:
           # Same display setup as the Fabric game tests above.
           SDL_VIDEO_FORCE_EGL: '1'
@@ -121,7 +160,7 @@ jobs:
           chmod +x ./gradlew
           xvfb-run -a -s "-screen 0 1920x1080x24" ./gradlew :neoforge:neoforgeSmokeTest
       - name: Upload screenshots and logs
-        if: always()
+        if: always() && steps.scope.outputs.run == 'true'
         uses: actions/upload-artifact@v7
         with:
           name: neoforge-smoke-test
@@ -151,16 +190,31 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+      # A Fabric-only build (neoforge_enabled=false, PRD D61) has nothing to test on NeoForge.
+      - name: What this build covers
+        id: scope
+        run: |
+          prop() { sed -n "s/^$1=//p" gradle.properties | tr -d '\r'; }
+          run=true
+          if [ "$(prop neoforge_enabled)" = false ]; then
+            run=false
+            echo "::notice::Skipped: Fabric-only build; NeoForge has no build for Minecraft $(prop minecraft_version) yet."
+          fi
+          echo "run=$run" >> "$GITHUB_OUTPUT"
       - name: Set up JDK 25
+        if: steps.scope.outputs.run == 'true'
         uses: actions/setup-java@v5
         with:
           java-version: '25'
           distribution: 'temurin'
       - name: Set up Gradle
+        if: steps.scope.outputs.run == 'true'
         uses: gradle/actions/setup-gradle@v6
       - name: Install Xvfb and Mesa
+        if: steps.scope.outputs.run == 'true'
         run: sudo apt-get update && sudo apt-get install -y xvfb libgl1-mesa-dri libglx-mesa0 libegl1 mesa-vulkan-drivers
       - name: Run NeoForge smoke test
+        if: steps.scope.outputs.run == 'true'
         env:
           # Same display setup as the Fabric game tests above; Sodium and Iris need OpenGL.
           SDL_VIDEO_FORCE_EGL: '1'
@@ -168,7 +222,7 @@ jobs:
           chmod +x ./gradlew
           xvfb-run -a -s "-screen 0 1920x1080x24" ./gradlew :neoforge:neoforgeSmokeTest ${{ matrix.flag }}
       - name: Upload screenshots and logs
-        if: always()
+        if: always() && steps.scope.outputs.run == 'true'
         uses: actions/upload-artifact@v7
         with:
           name: neoforge-smoke-test-${{ matrix.mods }}

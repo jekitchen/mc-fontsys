@@ -34,8 +34,8 @@ public final class UnappliedChangesScreen extends Screen {
 	}
 
 	@Override
-	public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
-		super.extractRenderState(graphics, mouseX, mouseY, a);
+	public void extractRenderState(GuiGraphicsExtractor graphics) {
+		super.extractRenderState(graphics);
 		graphics.centeredText(font, title, width / 2, height / 2 - 30, 0xFFFFFFFF);
 		graphics.centeredText(font, Component.translatable("fontsys.unapplied.message"), width / 2, height / 2 - 14, 0xFFA0A0A0);
 	}

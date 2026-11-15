@@ -11,5 +11,9 @@ pluginManagement {
 
 rootProject.name = 'fontsys'
 
-// NeoForge build (PRD D51): compiles the shared code in src/main plus neoforge/src.
-include 'neoforge'
+// NeoForge build (PRD D51): compiles the shared code in src/main plus neoforge/src. Left out while
+// neoforge_enabled=false (gradle.properties): the jar is Fabric-only until NeoForge has a build for
+// this Minecraft version (PRD D61).
+if (providers.gradleProperty('neoforge_enabled').getOrElse('true').toBoolean()) {
+	include 'neoforge'
+}

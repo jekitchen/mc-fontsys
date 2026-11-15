@@ -27,6 +27,6 @@ side="CLIENT"
 [[dependencies.fontsys]]
 modId="minecraft"
 type="required"
-versionRange="[${minecraft_version},26.4)"
+versionRange="${minecraft_range}"
 ordering="NONE"
 side="CLIENT"

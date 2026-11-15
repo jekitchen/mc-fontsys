@@ -9,14 +9,16 @@ import com.mojang.renderpearl.api.commands.CommandEncoder;
 import com.mojang.renderpearl.api.device.GpuDevice;
 import com.mojang.renderpearl.api.textures.AddressMode;
 import com.mojang.renderpearl.api.textures.FilterMode;
+import com.mojang.renderpearl.api.textures.GpuSampler;
 import com.mojang.renderpearl.api.textures.GpuTexture;
+import com.mojang.renderpearl.api.textures.GpuTextureView;
 import java.nio.file.Path;
 import net.minecraft.client.gui.font.GlyphRenderTypes;
 import net.minecraft.client.gui.font.glyphs.BakedSheetGlyph;
-import net.minecraft.client.renderer.texture.AbstractTexture;
-import net.minecraft.client.renderer.texture.Dumpable;
 import net.minecraft.client.renderer.texture.DynamicAtlasTree;
 import net.minecraft.client.renderer.texture.DynamicAtlasTreeSlot;
+import net.minecraft.client.renderer.texture.ExternalTextureProvider;
+import net.minecraft.client.renderer.texture.TextureResources;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.ARGB;
 import org.jspecify.annotations.Nullable;
@@ -29,16 +31,21 @@ import org.jspecify.annotations.Nullable;
  *
  * <ul>
  *   <li>The texture has {@link GlyphMipmaps#LEVELS} mip levels, filled on the CPU per glyph
- *       through Blaze3D's {@code CommandEncoder.writeToTexture(texture, image, mipLevel, ...)},
- *       the same call vanilla's block atlas uses. No OpenGL or Vulkan calls of our own.</li>
+ *       through Blaze3D's {@code NativeImage.writeToGpuTexture(encoder, texture, mipLevel, ...)},
+ *       the call vanilla's glyph upload uses. No OpenGL or Vulkan calls of our own.</li>
  *   <li>Glyphs sit in blocks aligned to the smallest level, with transparent margins
  *       ({@link GlyphMipmaps}), instead of 1 px apart.</li>
  *   <li>The texture's own sampler, which in-world text uses (signs, name tags, text displays),
  *       minifies trilinearly ({@code LINEAR} with mipmaps) and magnifies {@code NEAREST} as
  *       vanilla does, so close-up text is unchanged.</li>
  * </ul>
+ *
+ * <p>Like 26.4's {@code FontTexture}, the page is a {@link TextureResources} (texture, view and
+ * sampler) that {@link MipmappedGlyphPages} registers under the page's name, so the
+ * {@code text*} render types bind it by name, with this page's sampler, and closes when vanilla
+ * resets the stitcher (PRD D61: 26.4 removed {@code AbstractTexture} and {@code Dumpable}).
  */
-final class MipmappedGlyphPage extends AbstractTexture implements Dumpable {
+final class MipmappedGlyphPage implements AutoCloseable {
 	static final int SIZE = 256;
 	/** Vanilla's {@code FontTexture} inset, which keeps the sample inside the glyph's texels. */
 	private static final float INSET = 0.01F;
@@ -46,14 +53,21 @@ final class MipmappedGlyphPage extends AbstractTexture implements Dumpable {
 	private final GlyphRenderTypes renderTypes;
 	/** Free space, in blocks of {@link GlyphMipmaps#BLOCK} texels. */
 	private final DynamicAtlasTree blocks = new DynamicAtlasTree(0, 0, SIZE / GlyphMipmaps.BLOCK, SIZE / GlyphMipmaps.BLOCK);
+	private final TextureResources resources;
 
 	MipmappedGlyphPage(Identifier name) {
 		GpuDevice device = RenderSystem.getDevice();
 		int usage = GpuTexture.USAGE_COPY_DST | GpuTexture.USAGE_COPY_SRC | GpuTexture.USAGE_TEXTURE_BINDING;
-		this.texture = device.createTexture(name::toString, usage, GpuFormat.RGBA8_UNORM, SIZE, SIZE, 1, GlyphMipmaps.LEVELS);
-		this.textureView = device.createTextureView(this.texture);
-		this.sampler = RenderSystem.getSamplerCache().getSampler(AddressMode.REPEAT, AddressMode.REPEAT, FilterMode.LINEAR, FilterMode.NEAREST, true);
+		GpuTexture texture = device.createTexture(name::toString, usage, GpuFormat.RGBA8_UNORM, SIZE, SIZE, 1, GlyphMipmaps.LEVELS);
+		GpuTextureView textureView = device.createTextureView(texture);
+		GpuSampler sampler = RenderSystem.getSamplerCache().getSampler(AddressMode.REPEAT, AddressMode.REPEAT, FilterMode.LINEAR, FilterMode.NEAREST, true);
+		this.resources = new TextureResources(texture, textureView, sampler);
 		this.renderTypes = GlyphRenderTypes.createForColorTexture(name);
+	}
+
+	/** What the texture manager serves under this page's name, with the every-level dump below. */
+	ExternalTextureProvider provider() {
+		return new ExternalTextureProvider(resources, this::dumpContents);
 	}
 
 	/**
@@ -77,7 +91,7 @@ final class MipmappedGlyphPage extends AbstractTexture implements Dumpable {
 		float x = blockX + GlyphMipmaps.MARGIN;
 		float y = blockY + GlyphMipmaps.MARGIN;
 		return new MipmappedSheetGlyph(
-			gui, info, renderTypes, getTextureView(),
+			gui, info, renderTypes, resources.textureView(),
 			(x + INSET) / SIZE, (x - INSET + width) / SIZE, (y + INSET) / SIZE, (y - INSET + height) / SIZE,
 			bitmap.getLeft(), bitmap.getRight(), bitmap.getTop(), bitmap.getBottom());
 	}
@@ -108,16 +122,19 @@ final class MipmappedGlyphPage extends AbstractTexture implements Dumpable {
 						image.setPixelABGR(px, py, ColorAtlasGlyph.texel(texels[py * w + px]));
 					}
 				}
-				encoder.writeToTexture(getTexture(), image, level, 0, blockX >> level, blockY >> level);
+				image.writeToGpuTexture(encoder, resources.texture(), level, 0, blockX >> level, blockY >> level);
 			}
 		}
 	}
 
 	/** F3 + S texture dump, every level, as vanilla's {@code FontTexture} does for its one. */
+	private void dumpContents(Identifier id, Path dir) {
+		TextureUtil.writeAsPNG(dir, id.toDebugFileName(), resources.texture(), GlyphMipmaps.LEVELS - 1, argb -> ARGB.alpha(argb) == 0 ? 0xFF000000 : argb);
+	}
+
+	/** Frees the GPU texture; the texture manager's release doesn't for a provided texture. */
 	@Override
-	public void dumpContents(Identifier id, Path dir) {
-		if (this.texture != null) {
-			TextureUtil.writeAsPNG(dir, id.toDebugFileName(), this.texture, GlyphMipmaps.LEVELS - 1, argb -> ARGB.alpha(argb) == 0 ? 0xFF000000 : argb);
-		}
+	public void close() {
+		resources.close();
 	}
 }

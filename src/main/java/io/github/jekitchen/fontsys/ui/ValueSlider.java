@@ -4,7 +4,6 @@ import java.util.function.DoubleConsumer;
 import java.util.function.DoubleFunction;
 import net.minecraft.client.gui.components.AbstractSliderButton;
 import net.minecraft.network.chat.Component;
-import net.minecraft.util.Mth;
 
 /** A slider over a clamped, stepped range (PRD UI-4). */
 final class ValueSlider extends AbstractSliderButton {
@@ -15,7 +14,7 @@ final class ValueSlider extends AbstractSliderButton {
 	private final DoubleConsumer onChange;
 
 	ValueSlider(int x, int y, int width, double min, double max, double step, double initial, DoubleFunction<Component> label, DoubleConsumer onChange) {
-		super(x, y, width, 20, Component.empty(), (Mth.clamp(initial, min, max) - min) / (max - min));
+		super(x, y, width, 20, Component.empty(), (Math.clamp(initial, min, max) - min) / (max - min));
 		this.min = min;
 		this.max = max;
 		this.step = step;
@@ -26,12 +25,12 @@ final class ValueSlider extends AbstractSliderButton {
 
 	double current() {
 		double raw = min + value * (max - min);
-		return Mth.clamp(Math.round(raw / step) * step, min, max);
+		return Math.clamp(Math.round(raw / step) * step, min, max);
 	}
 
 	/** Moves the slider to {@code v} and reports the change, as dragging there would. */
 	void setCurrent(double v) {
-		value = (Mth.clamp(v, min, max) - min) / (max - min);
+		value = (Math.clamp(v, min, max) - min) / (max - min);
 		updateMessage();
 		applyValue();
 	}

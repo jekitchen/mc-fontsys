@@ -128,7 +128,7 @@ final class ColorAtlasGlyph implements UnbakedGlyph {
 		public void upload(int x, int y, GpuTexture texture) {
 			try (NativeImage rgba = new NativeImage(NativeImage.Format.RGBA, getPixelWidth(), getPixelHeight(), true)) {
 				if (render((px, py, c) -> set(rgba, px, py, c))) {
-					RenderSystem.getDevice().createCommandEncoder().writeToTexture(texture, rgba, 0, 0, x, y);
+					rgba.writeToGpuTexture(RenderSystem.getDevice().createCommandEncoder(), texture, 0, 0, x, y);
 				}
 			}
 		}

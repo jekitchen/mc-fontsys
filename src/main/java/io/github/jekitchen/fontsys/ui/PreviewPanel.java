@@ -15,8 +15,8 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.GuiPipeline;
 import net.minecraft.client.gui.navigation.ScreenPosition;
-import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import org.jspecify.annotations.Nullable;
@@ -232,7 +232,7 @@ final class PreviewPanel {
 	}
 
 	private static void extractButton(GuiGraphicsExtractor graphics, Font font, Component label, int x, int y, int width) {
-		graphics.blitSprite(RenderPipelines.GUI_TEXTURED, BUTTON_SPRITE, x, y, width, 20);
+		graphics.blitSprite(GuiPipeline.TEXTURED, BUTTON_SPRITE, x, y, width, 20);
 		int textY = (y + y + 20 - 9) / 2 + 1;
 		graphics.text(font, label, x + (width - font.width(label)) / 2, textY, 0xFFFFFFFF, true);
 	}

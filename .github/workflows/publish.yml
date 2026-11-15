@@ -3,14 +3,18 @@
 # nothing reaches the stores until it is published on GitHub.
 #
 # The one jar works on Fabric and NeoForge, so each store gets one file listed for both
-# loaders (PRD D54). Store dependencies apply to the whole file, not per loader, and
-# fabric.mod.json enforces Fabric API on Fabric whatever the store says:
+# loaders (PRD D54). The loaders come from the jar itself: a Fabric-only jar (neoforge_enabled=false,
+# while NeoForge has no build for the Minecraft version, PRD D61) is listed for Fabric only, and
+# NeoForge is added later by a new version whose jar carries both. Store dependencies apply to the
+# whole file, not per loader, and fabric.mod.json enforces Fabric API on Fabric whatever the
+# store says:
 #   Modrinth:   fabric-api required. The Modrinth App and website skip a required
 #               dependency that has no version for the instance's loader, so Fabric
 #               players get Fabric API installed and NeoForge players don't.
-#   CurseForge: fabric-api optional. How the CurseForge app treats a required dependency
-#               with no NeoForge file isn't documented, so don't risk it installing Fabric
-#               API into NeoForge instances.
+#   CurseForge: fabric-api optional when the jar is also for NeoForge. How the CurseForge app
+#               treats a required dependency with no NeoForge file isn't documented, so don't
+#               risk it installing Fabric API into NeoForge instances. Required for a
+#               Fabric-only jar.
 #
 # Setup (repository settings → Secrets and variables → Actions):
 #   variables MODRINTH_PROJECT_ID, CURSEFORGE_PROJECT_ID   (project IDs, not slugs)
@@ -70,6 +74,14 @@ jobs:
           echo "FULL_VERSION=$(basename "$jar" .jar | sed 's/^fontsys-//')" >> "$GITHUB_ENV"
           # Minecraft versions the jar is listed for, from gradle.properties.
           echo "GAME_VERSIONS=$(sed -n 's/^publish_game_versions=//p' gradle.properties | tr -d '\r')" >> "$GITHUB_ENV"
+          # Loaders: the ones whose metadata the jar carries (PRD D54, D61), one per line for mc-publish.
+          loaders=""
+          if unzip -Z1 "$jar" | grep -qx 'fabric.mod.json'; then loaders="fabric"; fi
+          if unzip -Z1 "$jar" | grep -qx 'META-INF/neoforge.mods.toml'; then loaders="${loaders:+$loaders$'\n'}neoforge"; fi
+          test -n "$loaders" || { echo "::error::$jar has neither fabric.mod.json nor META-INF/neoforge.mods.toml"; exit 1; }
+          echo "Loaders: $(echo $loaders)"
+          { echo 'LOADERS<<EOF'; echo "$loaders"; echo 'EOF'; } >> "$GITHUB_ENV"
+          case "$loaders" in *neoforge*) echo "CURSEFORGE_FABRIC_API=optional" >> "$GITHUB_ENV" ;; *) echo "CURSEFORGE_FABRIC_API=required" >> "$GITHUB_ENV" ;; esac
       - name: Modrinth
         if: vars.MODRINTH_PROJECT_ID != '' && env.STORES != 'curseforge'
         # mc-publish v3.3.2, pinned to its commit.
@@ -82,9 +94,7 @@ jobs:
           version: ${{ env.FULL_VERSION }}
           version-type: release
           changelog-file: release-notes.md
-          loaders: |
-            fabric
-            neoforge
+          loaders: ${{ env.LOADERS }}
           game-versions: ${{ env.GAME_VERSIONS }}
           java: 25
           dependencies: |
@@ -103,11 +113,9 @@ jobs:
           version: ${{ env.FULL_VERSION }}
           version-type: release
           changelog-file: release-notes.md
-          loaders: |
-            fabric
-            neoforge
+          loaders: ${{ env.LOADERS }}
           game-versions: ${{ env.GAME_VERSIONS }}
           java: 25
           dependencies: |
-            fabric-api(optional)
+            fabric-api(${{ env.CURSEFORGE_FABRIC_API }})
             modmenu(optional)

@@ -8,6 +8,8 @@ import com.mojang.renderpearl.api.textures.GpuTexture;
 import io.github.jekitchen.fontsys.Fontsys;
 import io.github.jekitchen.fontsys.config.FontSettings;
 import io.github.jekitchen.fontsys.discovery.FaceInfo;
+import io.github.jekitchen.fontsys.mixin.FontManagerAccessor;
+import io.github.jekitchen.fontsys.mixin.MinecraftAccessor;
 import io.github.jekitchen.fontsys.pack.GlyphMipmaps;
 import io.github.jekitchen.fontsys.pack.MipmappedGlyphPages;
 import java.io.IOException;
@@ -17,10 +19,12 @@ import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -28,13 +32,12 @@ import net.minecraft.client.CloudStatus;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.gui.font.FontTexture;
 import net.minecraft.client.gui.font.TextRenderable;
 import net.minecraft.client.gui.render.TextureSetup;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.client.renderer.state.gui.GlyphRenderState;
-import net.minecraft.client.renderer.texture.AbstractTexture;
+import net.minecraft.client.renderer.texture.TextureHandle;
 import net.minecraft.client.renderer.texture.TextureManager;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -382,14 +385,14 @@ public class DistantTextGameTest implements FabricClientGameTest {
 					found.add("GUI text sampler " + describe(guiSampler) + " could read lower mip levels");
 				}
 			}
-			for (Map.Entry<Identifier, AbstractTexture> entry : textures(mc.getTextureManager()).entrySet()) {
+			for (Map.Entry<Identifier, TextureHandle> entry : atlasPages(mc).entrySet()) {
 				if (isMipmappedPage(entry.getKey())) {
-					GpuSampler sampler = entry.getValue().getSampler();
+					GpuSampler sampler = entry.getValue().sampler();
 					if (sampler.getMinFilter() != FilterMode.LINEAR || sampler.getMagFilter() != FilterMode.NEAREST || sampler.getMaxLod().isPresent()) {
 						found.add(entry.getKey() + " sampler " + describe(sampler));
 					}
-				} else if (entry.getValue() instanceof FontTexture font && font.getTexture().getMipLevels() != 1) {
-					found.add(entry.getKey() + " (vanilla) has " + font.getTexture().getMipLevels() + " mip levels");
+				} else if (entry.getValue().textureView().texture().getMipLevels() != 1) {
+					found.add(entry.getKey() + " (vanilla) has " + entry.getValue().textureView().texture().getMipLevels() + " mip levels");
 				}
 			}
 			return found.stream().distinct().toList();
@@ -407,12 +410,9 @@ public class DistantTextGameTest implements FabricClientGameTest {
 			long total = 0;
 			long mipmapped = 0;
 			long pages = 0;
-			for (Map.Entry<Identifier, AbstractTexture> entry : textures(mc.getTextureManager()).entrySet()) {
+			for (Map.Entry<Identifier, TextureHandle> entry : atlasPages(mc).entrySet()) {
 				boolean ours = isMipmappedPage(entry.getKey());
-				if (!ours && !(entry.getValue() instanceof FontTexture)) {
-					continue;
-				}
-				GpuTexture texture = entry.getValue().getTexture();
+				GpuTexture texture = entry.getValue().textureView().texture();
 				long bytes = 0;
 				for (int level = 0; level < texture.getMipLevels(); level++) {
 					bytes += (long) texture.getWidth(level) * texture.getHeight(level) * texture.getFormat().componentCount();
@@ -429,13 +429,35 @@ public class DistantTextGameTest implements FabricClientGameTest {
 		return id.getNamespace().equals(Fontsys.MOD_ID) && id.getPath().startsWith("font_mip/");
 	}
 
-	/** Every registered texture; the game ships unobfuscated, so the field name is stable. */
-	@SuppressWarnings("unchecked")
-	private static Map<Identifier, AbstractTexture> textures(TextureManager manager) {
+	/**
+	 * Every glyph atlas page with its texture: Fontsys's mipmapped pages, and the pages of
+	 * vanilla's font sets, which 26.4 registers as {@code <font set>/<n>} (its {@code FontTexture}
+	 * is no longer a texture itself, PRD D61).
+	 */
+	private static Map<Identifier, TextureHandle> atlasPages(Minecraft mc) {
+		TextureManager manager = mc.getTextureManager();
+		Set<Identifier> fontSets = ((FontManagerAccessor) ((MinecraftAccessor) mc).fontsys$fontManager()).fontsys$fontSets().keySet();
+		Map<Identifier, TextureHandle> pages = new HashMap<>();
+		for (Identifier id : registered(manager)) {
+			if (isMipmappedPage(id) || isFontSetPage(id, fontSets)) {
+				pages.put(id, manager.getTexture(id));
+			}
+		}
+		return pages;
+	}
+
+	private static boolean isFontSetPage(Identifier id, Set<Identifier> fontSets) {
+		int slash = id.getPath().lastIndexOf('/');
+		return slash > 0 && id.getPath().substring(slash + 1).matches("\\d+")
+			&& fontSets.contains(Identifier.fromNamespaceAndPath(id.getNamespace(), id.getPath().substring(0, slash)));
+	}
+
+	/** Every registered texture name; the game ships unobfuscated, so the field name is stable. */
+	private static Set<Identifier> registered(TextureManager manager) {
 		try {
 			Field field = TextureManager.class.getDeclaredField("byPath");
 			field.setAccessible(true);
-			return Map.copyOf((Map<Identifier, AbstractTexture>) field.get(manager));
+			return Set.copyOf(((Map<?, ?>) field.get(manager)).keySet().stream().map(Identifier.class::cast).toList());
 		} catch (ReflectiveOperationException e) {
 			throw new IllegalStateException("TextureManager.byPath not found", e);
 		}
@@ -580,13 +602,13 @@ public class DistantTextGameTest implements FabricClientGameTest {
 		}
 
 		@Override
-		public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
+		public void extractBackground(GuiGraphicsExtractor graphics) {
 			graphics.fill(0, 0, width, height, 0xFF202020);
 		}
 
 		@Override
-		public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
-			super.extractRenderState(graphics, mouseX, mouseY, a);
+		public void extractRenderState(GuiGraphicsExtractor graphics) {
+			super.extractRenderState(graphics);
 			graphics.text(font, SAMPLE, 8, 8, 0xFFFFFFFF, true);
 			graphics.text(font, SAMPLE, 8, 24, 0xFF000000, false);
 			float[] scales = {0.75F, 0.5F};

@@ -152,13 +152,13 @@ public class TextQualityGameTest implements FabricClientGameTest {
 		}
 
 		@Override
-		public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
+		public void extractBackground(GuiGraphicsExtractor graphics) {
 			graphics.fill(0, 0, width, height, background);
 		}
 
 		@Override
-		public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
-			super.extractRenderState(graphics, mouseX, mouseY, a);
+		public void extractRenderState(GuiGraphicsExtractor graphics) {
+			super.extractRenderState(graphics);
 			graphics.text(font, SAMPLE, 8, 8, color, shadow);
 		}
 	}

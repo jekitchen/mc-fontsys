@@ -2,9 +2,9 @@ package io.github.jekitchen.fontsys.pack;
 
 import com.mojang.blaze3d.font.GlyphInfo;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import com.mojang.renderpearl.api.pipeline.RenderPipeline;
 import com.mojang.renderpearl.api.textures.GpuTextureView;
 import net.minecraft.client.gui.Font;
+import net.minecraft.client.gui.GuiPipeline;
 import net.minecraft.client.gui.font.GlyphRenderTypes;
 import net.minecraft.client.gui.font.TextRenderable;
 import net.minecraft.client.gui.font.glyphs.BakedSheetGlyph;
@@ -77,7 +77,7 @@ final class MipmappedSheetGlyph extends BakedSheetGlyph {
 		}
 
 		@Override
-		public RenderPipeline guiPipeline() {
+		public GuiPipeline guiPipeline() {
 			return gui.guiPipeline();
 		}
 
