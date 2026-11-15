@@ -31,6 +31,7 @@ import net.neoforged.neoforge.common.NeoForge;
 public final class FontsysNeoForge {
 	private static final KeyMapping.Category KEY_CATEGORY = new KeyMapping.Category(ClientHooks.KEY_CATEGORY);
 	private static final KeyMapping OPEN_KEY = ClientHooks.createOpenKey(KEY_CATEGORY);
+	private static final KeyMapping TOGGLE_KEY = ClientHooks.createToggleKey(KEY_CATEGORY);
 
 	public FontsysNeoForge(IEventBus modBus, ModContainer container) {
 		Fontsys.init(new NeoForgePlatform());
@@ -41,12 +42,13 @@ public final class FontsysNeoForge {
 		modBus.addListener(RegisterKeyMappingsEvent.class, event -> {
 			event.registerCategory(KEY_CATEGORY);
 			event.register(OPEN_KEY);
+			event.register(TOGGLE_KEY);
 		});
 
 		IEventBus game = NeoForge.EVENT_BUS;
 		game.addListener(RegisterClientCommandsEvent.class, event -> event.getDispatcher()
 			.register(FontsysCommand.<CommandSourceStack>build((source, line) -> source.sendSuccess(() -> line, false))));
-		game.addListener(ClientTickEvent.Post.class, event -> ClientHooks.endClientTick(Minecraft.getInstance(), OPEN_KEY));
+		game.addListener(ClientTickEvent.Post.class, event -> ClientHooks.endClientTick(Minecraft.getInstance(), OPEN_KEY, TOGGLE_KEY));
 
 		// Screens (UI-18, D42). NeoForge's Init events fire only when a screen builds its widgets,
 		// not when the player comes back to it (vanilla then only repositions them), so labels are

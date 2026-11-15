@@ -2,6 +2,12 @@
 
 All notable changes to Fontsys. Versions follow [semantic versioning](https://semver.org/); the jar adds the Minecraft version as build metadata (for example `1.0.0+26.3`).
 
+## [1.3.0] - unreleased
+
+### Added
+
+- **Quick toggle key.** Switch between your font and Minecraft's own with one key press, for example to compare them or to read something in the original font. Bind **Toggle Fontsys font** under Options → Controls → Key Binds → Fontsys; it has no key by default, so it can't clash with other mods. Press it again to switch back. Your font and its settings are kept, the choice is remembered after a restart, and a message above the hotbar says which font is now in use.
+
 ## [1.2.0] - 2026-11-14
 
 ### Added

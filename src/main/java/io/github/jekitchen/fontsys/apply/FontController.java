@@ -43,7 +43,7 @@ public final class FontController {
 	/** System.nanoTime() when an unconfirmed change reverts; 0 when nothing is pending. */
 	private long confirmDeadline;
 	private int guiScaleChangedTicks;
-	private boolean reloading;
+	private volatile boolean reloading;
 	private volatile int fontGeneration;
 
 	public FontController(ConfigStore store, Platform platform) {
@@ -234,6 +234,11 @@ public final class FontController {
 			lastApplyMillis = ms;
 			Fontsys.LOGGER.info("[{}] {} in {} ms.", Fontsys.DISPLAY_NAME, what, ms);
 		});
+	}
+
+	/** A reload Fontsys started is still running. */
+	public boolean isReloading() {
+		return reloading;
 	}
 
 	/**
