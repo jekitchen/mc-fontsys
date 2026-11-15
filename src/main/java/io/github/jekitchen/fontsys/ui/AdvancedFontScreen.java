@@ -179,8 +179,11 @@ public final class AdvancedFontScreen extends Screen {
 	}
 
 	@Override
-	public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
-		super.extractRenderState(graphics, mouseX, mouseY, a);
+	public void extractRenderState(GuiGraphicsExtractor graphics) {
+		super.extractRenderState(graphics);
+		// 26.4 passes the mouse through the extractor, not as arguments (PRD D61).
+		int mouseX = graphics.mouseX();
+		int mouseY = graphics.mouseY();
 		graphics.centeredText(font, title, width / 2, 8, 0xFFFFFFFF);
 		if (noteY + font.lineHeight <= previewY1) {
 			graphics.textWithWordWrap(font, Component.translatable("fontsys.advanced.note"), MARGIN, noteY, column, 0xFFA0A0A0);

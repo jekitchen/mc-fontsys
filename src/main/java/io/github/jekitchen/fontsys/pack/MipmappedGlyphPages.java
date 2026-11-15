@@ -85,7 +85,7 @@ public final class MipmappedGlyphPages {
 			Identifier name = pageName(pages.size());
 			MipmappedGlyphPage page = new MipmappedGlyphPage(name);
 			pages.add(page);
-			textureManager.register(name, page);
+			textureManager.registerProvider(name, page.provider());
 			return page.add(info, glyph, gui); // null if the glyph is larger than a whole page
 		} catch (RuntimeException | LinkageError e) {
 			enabled = false;
@@ -106,6 +106,7 @@ public final class MipmappedGlyphPages {
 	public void reset() {
 		for (int i = 0; i < pages.size(); i++) {
 			textureManager.release(pageName(i));
+			pages.get(i).close();
 		}
 		pages.clear();
 	}

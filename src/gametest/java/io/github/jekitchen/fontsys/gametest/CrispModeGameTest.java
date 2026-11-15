@@ -112,13 +112,13 @@ public class CrispModeGameTest implements FabricClientGameTest {
 		}
 
 		@Override
-		public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
+		public void extractBackground(GuiGraphicsExtractor graphics) {
 			graphics.fill(0, 0, width, height, 0xFF000000);
 		}
 
 		@Override
-		public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
-			super.extractRenderState(graphics, mouseX, mouseY, a);
+		public void extractRenderState(GuiGraphicsExtractor graphics) {
+			super.extractRenderState(graphics);
 			graphics.text(font, SAMPLE, 8, 8, 0xFFFFFFFF, false);
 			graphics.text(font, Component.literal(SAMPLE).withStyle(net.minecraft.ChatFormatting.BOLD), 8, 22, 0xFFFFFFFF, false);
 		}

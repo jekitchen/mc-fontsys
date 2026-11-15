@@ -368,7 +368,7 @@ public class SettingsUiGameTest implements FabricClientGameTest {
 
 	private static @Nullable ScreenRectangle clearButton(ClientGameTestContext context) {
 		return context.computeOnClient(mc -> widgets(mc.gui.screen()).stream()
-			.filter(w -> w instanceof Button && w.visible && w.getMessage().getString().equals("×"))
+			.filter(w -> w instanceof Button && w.isVisible() && w.getMessage().getString().equals("×"))
 			.map(AbstractWidget::getRectangle).findFirst().orElse(null));
 	}
 

@@ -11,7 +11,8 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.font.TextRenderable;
 import net.minecraft.client.gui.screens.TitleScreen;
-import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.client.gui.GuiPipeline;
+import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.network.chat.Component;
 
 /**
@@ -51,10 +52,12 @@ public class GlyphPipelineGameTest implements FabricClientGameTest {
 					problems.add("no glyphs prepared");
 				}
 				for (TextRenderable.Styled glyph : glyphs) {
-					check(problems, glyph.renderType(Font.DisplayMode.NORMAL).pipeline(), RenderPipelines.TEXT);
-					check(problems, glyph.renderType(Font.DisplayMode.SEE_THROUGH).pipeline(), RenderPipelines.TEXT_SEE_THROUGH);
-					check(problems, glyph.renderType(Font.DisplayMode.POLYGON_OFFSET).pipeline(), RenderPipelines.TEXT_POLYGON_OFFSET);
-					check(problems, glyph.guiPipeline(), RenderPipelines.GUI_TEXT);
+					// 26.4 picks a render type's pipeline per transparency stage and keeps it private
+					// (PRD D61), so check the render types by name: the color text types, not text_grayscale*.
+					checkName(problems, glyph.renderType(Font.DisplayMode.NORMAL), "text");
+					checkName(problems, glyph.renderType(Font.DisplayMode.SEE_THROUGH), "text_see_through");
+					checkName(problems, glyph.renderType(Font.DisplayMode.POLYGON_OFFSET), "text_polygon_offset");
+					check(problems, glyph.guiPipeline(), GuiPipeline.TEXT);
 				}
 				return problems.stream().distinct().toList();
 			});
@@ -63,6 +66,13 @@ public class GlyphPipelineGameTest implements FabricClientGameTest {
 			}
 		} finally {
 			GameTestFonts.apply(context, FontSettings.DEFAULTS);
+		}
+	}
+
+	/** {@code RenderType.toString()} is {@code RenderType[<name>:<setup>]}. */
+	private static void checkName(List<String> problems, RenderType actual, String expected) {
+		if (!actual.toString().startsWith("RenderType[" + expected + ":")) {
+			problems.add(actual + " instead of render type " + expected);
 		}
 	}
 

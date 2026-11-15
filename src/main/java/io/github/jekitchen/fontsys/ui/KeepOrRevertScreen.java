@@ -56,8 +56,8 @@ public final class KeepOrRevertScreen extends Screen {
 	}
 
 	@Override
-	public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
-		super.extractRenderState(graphics, mouseX, mouseY, a);
+	public void extractRenderState(GuiGraphicsExtractor graphics) {
+		super.extractRenderState(graphics);
 		graphics.centeredText(font, title, width / 2, 10, 0xFFFFFFFF);
 		int seconds = Fontsys.controller().secondsLeft();
 		graphics.centeredText(font, VanillaText.translatable("fontsys.confirm.countdown", seconds), width / 2, height - 44, 0xFFFFFF55);

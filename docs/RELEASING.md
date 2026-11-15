@@ -11,7 +11,7 @@ Checklist for a release (PRD D15, D29). Releases need the owner's go-ahead. Push
    - A server with a custom-glyph resource pack: its HUD glyphs still show.
    - A config copied from another computer: WARN line in the log, no dialog, vanilla font.
    - The game killed during the keep-or-revert countdown: the previous font is back at the next launch.
-3. Set `mod_version` in `gradle.properties` (semantic versioning; the jar gets `+26.3` appended, e.g. `1.0.0+26.3`).
+3. Set `mod_version` in `gradle.properties` (semantic versioning; the jar gets `+<minecraft_label>` appended, e.g. `1.0.0+26.3`; one jar per Minecraft version from 26.4 on, PRD D61).
 4. In `CHANGELOG.md`, replace "unreleased" in the version's heading with the release date (`## [1.0.0] - 2026-12-01`). The release notes are taken from that section.
 5. Update the PRD: status, decision log and change log.
 6. Merge the release PR into `main`.
@@ -22,7 +22,7 @@ Checklist for a release (PRD D15, D29). Releases need the owner's go-ahead. Push
 ./gradlew clean build
 ```
 
-The release jar is `build/libs/fontsys-<version>+26.3.jar`, one file for both Fabric and NeoForge (PRD D54). `build` checks that it carries both loaders' metadata with the same version. Don't publish the `-sources` jar as the main file.
+The release jar is `build/libs/fontsys-<version>+<minecraft_label>.jar`, one file for both Fabric and NeoForge (PRD D54). `build` checks that it carries both loaders' metadata with the same version. With `neoforge_enabled=false` (no NeoForge for that Minecraft yet, PRD D61) it is Fabric-only, and `build` checks that it has no NeoForge parts; `publish` then lists it for Fabric only. Don't publish the `-sources` jar as the main file.
 
 ## Publish
 

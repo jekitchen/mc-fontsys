@@ -27,6 +27,8 @@ How Fontsys moves to Minecraft 26.4 (PRD D61). [RELEASING.md](RELEASING.md) cove
 
 The 26.3 jar doesn't start on 26.4: 26.4 reworked GUI rendering and textures. The mixins are fine. Details are in D61.
 
+**Port status:** the code on `mc-26.4-port` builds and passes the full Fabric game-test suite on 26.4-snapshot-8 on OpenGL, from dev classes and as the built jar.
+
 **Vulkan:** Fontsys 1.2.0 crashes on Vulkan (`VK_ERROR_DEVICE_LOST`), on 26.3 and on 26.4. That's an existing bug, tracked and fixed separately in D62, and it blocks both 1.3.0 and 1.4.0. It matters more on 26.4, whose default setting picks Vulkan on about half of launches.
 
 ## Tools

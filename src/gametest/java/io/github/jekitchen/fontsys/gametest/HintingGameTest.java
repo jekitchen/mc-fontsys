@@ -354,13 +354,13 @@ public class HintingGameTest implements FabricClientGameTest {
 		}
 
 		@Override
-		public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
+		public void extractBackground(GuiGraphicsExtractor graphics) {
 			graphics.fill(0, 0, width, height, 0xFF000000);
 		}
 
 		@Override
-		public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
-			super.extractRenderState(graphics, mouseX, mouseY, a);
+		public void extractRenderState(GuiGraphicsExtractor graphics) {
+			super.extractRenderState(graphics);
 			graphics.text(font, LINE_1, 8, 8, 0xFFFFFFFF, false);
 			graphics.text(font, LINE_2, 8, 24, 0xFFFFFFFF, false);
 			for (int i = 0; i < GLYPHS.length(); i++) {
